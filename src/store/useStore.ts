@@ -8,28 +8,24 @@ export interface AppState {
   students: Student[];
   lessons: Lesson[];
   customFields: CustomField[];
+  lastBackupAt?: string;
   toggleTheme: () => void;
+  setLastBackupAt: (date: string) => void;
   addStudent: (student: Omit<Student, 'id'>) => string;
   updateStudent: (id: string, updates: Partial<Student>) => void;
-  deleteStudent: (id: string) => void;
+  deleteStudent: (id: string, onDeleted?: (student: Student, lessons: Lesson[]) => void) => void;
+  restoreStudent: (student: Student, lessons: Lesson[]) => void;
   addLesson: (lesson: Omit<Lesson, 'id' | 'created_at' | 'updated_at'>) => void;
-  editLesson: (id: string, updates: Partial<Lesson>) => void;
-  deleteLesson: (id: string) => void;
+  addRecurringLesson: (lesson: Omit<Lesson, 'id' | 'created_at' | 'updated_at'>, weeks: number) => void;
+  editLesson: (id: string, updates: Partial<Lesson>, updateSeries?: boolean) => void;
+  deleteLesson: (id: string, onDeleted?: (lesson: Lesson) => void) => void;
+  restoreLesson: (lesson: Lesson) => void;
   addCustomField: (label: string) => void;
   toggleCustomFieldVisibility: (id: string) => void;
   removeCustomField: (id: string) => void;
 }
 
-const defaultStudents: Student[] = [
-  { id: uuidv4(), name: 'Artur', language: 'Ukrainian', price: '0', status: 'Active' },
-  { id: uuidv4(), name: 'Vladyslav U.', language: 'Ukrainian', price: '0', status: 'Active' },
-  { id: uuidv4(), name: 'Kate C.', language: 'Ukrainian', price: '0', status: 'Active' },
-  { id: uuidv4(), name: 'Oksana S.', language: 'Ukrainian', price: '0', status: 'Active' },
-  { id: uuidv4(), name: 'Vlad K.', language: 'Ukrainian', price: '0', status: 'Active' },
-  { id: uuidv4(), name: 'Nataliia M.', language: 'Ukrainian', price: '0', status: 'Active' },
-  { id: uuidv4(), name: 'Yury M.', language: 'Ukrainian', price: '0', status: 'Inactive' },
-  { id: uuidv4(), name: 'Anita', language: 'Ukrainian', price: '0', status: 'Inactive' },
-];
+const defaultStudents: Student[] = [];
 
 export const useStore = create<AppState>()(
   persist(
@@ -38,7 +34,9 @@ export const useStore = create<AppState>()(
       students: defaultStudents,
       lessons: [],
       customFields: [],
+      lastBackupAt: undefined,
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+      setLastBackupAt: (date) => set({ lastBackupAt: date }),
       addStudent: (studentData) => {
         const id = uuidv4();
         const newStudent = { ...studentData, id };
@@ -50,9 +48,18 @@ export const useStore = create<AppState>()(
           student.id === id ? { ...student, ...updates } : student
         )
       })),
-      deleteStudent: (id) => set((state) => ({
-        students: state.students.filter(student => student.id !== id),
-        lessons: state.lessons.filter(lesson => lesson.student_id !== id)
+      deleteStudent: (id, onDeleted) => set((state) => {
+        const student = state.students.find(s => s.id === id);
+        const relatedLessons = state.lessons.filter(l => l.student_id === id);
+        if (student && onDeleted) onDeleted(student, relatedLessons);
+        return {
+          students: state.students.filter(s => s.id !== id),
+          lessons: state.lessons.filter(l => l.student_id !== id)
+        };
+      }),
+      restoreStudent: (student, lessons) => set((state) => ({
+        students: [...state.students, student],
+        lessons: [...state.lessons, ...lessons]
       })),
       addLesson: (lessonData) => set((state) => {
         const newLesson: Lesson = {
@@ -64,15 +71,59 @@ export const useStore = create<AppState>()(
         };
         return { lessons: [...state.lessons, newLesson] };
       }),
-      editLesson: (id, updates) => set((state) => ({
-        lessons: state.lessons.map((lesson) => 
-          lesson.id === id 
-            ? { ...lesson, ...updates, updated_at: new Date().toISOString() } 
-            : lesson
-        )
-      })),
-      deleteLesson: (id) => set((state) => ({
-        lessons: state.lessons.filter((lesson) => lesson.id !== id)
+      addRecurringLesson: (lessonData, weeks) => set((state) => {
+        const seriesId = uuidv4();
+        const newLessons: Lesson[] = [];
+        const startDate = new Date(lessonData.lesson_date);
+
+        for (let i = 0; i < weeks; i++) {
+          const currentDate = new Date(startDate);
+          currentDate.setDate(startDate.getDate() + (i * 7));
+          
+          newLessons.push({
+            ...lessonData,
+            id: uuidv4(),
+            lesson_date: currentDate.toISOString().split('T')[0],
+            recurringId: seriesId,
+            isRecurring: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            custom_fields: lessonData.custom_fields || {},
+          });
+        }
+        return { lessons: [...state.lessons, ...newLessons] };
+      }),
+      editLesson: (id, updates, updateSeries) => set((state) => {
+        const lessonToEdit = state.lessons.find(l => l.id === id);
+        if (!lessonToEdit) return state;
+
+        if (updateSeries && lessonToEdit.recurringId) {
+          return {
+            lessons: state.lessons.map((lesson) => 
+              lesson.recurringId === lessonToEdit.recurringId 
+                ? { ...lesson, ...updates, updated_at: new Date().toISOString() } 
+                : lesson
+            )
+          };
+        }
+
+        return {
+          lessons: state.lessons.map((lesson) => 
+            lesson.id === id 
+              ? { ...lesson, ...updates, isRecurring: updateSeries ? lesson.isRecurring : false, recurringId: updateSeries ? lesson.recurringId : undefined, updated_at: new Date().toISOString() } 
+              : lesson
+          )
+        };
+      }),
+      deleteLesson: (id, onDeleted) => set((state) => {
+        const lesson = state.lessons.find(l => l.id === id);
+        if (lesson && onDeleted) onDeleted(lesson);
+        return {
+          lessons: state.lessons.filter((l) => l.id !== id)
+        };
+      }),
+      restoreLesson: (lesson) => set((state) => ({
+        lessons: [...state.lessons, lesson]
       })),
       addCustomField: (label) => set((state) => ({
         customFields: [...state.customFields, { id: uuidv4(), label, isVisible: true }]
@@ -88,6 +139,14 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'crm-storage',
+      version: 2,
+      migrate: () => ({
+        theme: 'light' as const,
+        students: [],
+        lessons: [],
+        customFields: [],
+        lastBackupAt: undefined,
+      }),
     }
   )
 );

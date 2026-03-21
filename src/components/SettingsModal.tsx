@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { X, Plus, Trash2, Eye, EyeOff, Download, Upload, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 interface SettingsModalProps {
@@ -8,8 +8,11 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { customFields, addCustomField, toggleCustomFieldVisibility, removeCustomField } = useStore();
+  const { customFields, addCustomField, toggleCustomFieldVisibility, removeCustomField, lastBackupAt, setLastBackupAt } = useStore();
   const [newLabel, setNewLabel] = useState('');
+  const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  const daysSinceLastBackup = lastBackupAt ? Math.floor((new Date().getTime() - new Date(lastBackupAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
 
   if (!isOpen) return null;
 
@@ -19,6 +22,60 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       addCustomField(newLabel.trim());
       setNewLabel('');
     }
+  };
+
+  const handleExport = () => {
+    try {
+      const data = localStorage.getItem('crm-storage');
+      if (!data) throw new Error('No data found to export');
+      
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      
+      link.href = url;
+      link.download = `teacher-crm-backup-${timestamp}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      const now = new Date().toISOString();
+      setLastBackupAt(now);
+      setBackupStatus({ type: 'success', message: 'Data exported successfully!' });
+    } catch (err) {
+      setBackupStatus({ type: 'error', message: 'Failed to export data.' });
+    }
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        
+        // Basic validation of Zustand persist structure
+        if (!parsed.state || !parsed.state.students || !parsed.state.lessons) {
+          throw new Error('Invalid backup file structure.');
+        }
+
+        if (window.confirm('Are you sure you want to restore this backup? This will COMPLETELY OVERWRITE your current data. This action cannot be undone.')) {
+          localStorage.setItem('crm-storage', content);
+          setBackupStatus({ type: 'success', message: 'Backup restored! Reloading...' });
+          setTimeout(() => window.location.reload(), 1500);
+        }
+      } catch (err) {
+        setBackupStatus({ type: 'error', message: err instanceof Error ? err.message : 'Failed to import data.' });
+      }
+      // Reset input
+      e.target.value = '';
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -80,6 +137,61 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
             ))
           )}
+        </div>
+
+        <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
+          <h3 className="mb-2" style={{ fontSize: '1.1rem', fontWeight: 600 }}>Data Backup & Restore</h3>
+          
+          <div className="flex flex-col gap-1 mb-4">
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Last backup: {lastBackupAt ? new Date(lastBackupAt).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never'}
+            </div>
+            {daysSinceLastBackup !== null && daysSinceLastBackup > 7 && (
+              <div className="flex items-center gap-2" style={{ color: '#c2410c', fontSize: '0.85rem', fontWeight: 600 }}>
+                <AlertTriangle size={14} /> Backup recommended ({daysSinceLastBackup} days ago)
+              </div>
+            )}
+            {!lastBackupAt && (
+              <div className="flex items-center gap-2" style={{ color: '#c2410c', fontSize: '0.85rem', fontWeight: 600 }}>
+                <AlertTriangle size={14} /> Backup highly recommended (never backed up)
+              </div>
+            )}
+          </div>
+          
+          {backupStatus && (
+            <div className={`flex items-center gap-2 p-3 mb-4 rounded-lg`} style={{ 
+              backgroundColor: backupStatus.type === 'success' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              color: backupStatus.type === 'success' ? '#166534' : '#991b1b',
+              fontSize: '0.9rem',
+              border: `1px solid ${backupStatus.type === 'success' ? '#bbf7d0' : '#fecaca'}`
+            }}>
+              {backupStatus.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+              {backupStatus.message}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3">
+            <button className="btn btn-primary w-full justify-start" onClick={handleExport}>
+              <Download size={18} /> Export Data (.json)
+            </button>
+            
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="file" 
+                accept=".json" 
+                onChange={handleImport} 
+                style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', top: 0, left: 0 }}
+                title="Import Data"
+              />
+              <button className="btn btn-ghost w-full justify-start" style={{ border: '1px solid var(--border-color)' }}>
+                <Upload size={18} /> Import Data (.json)
+              </button>
+            </div>
+
+            <p className="text-muted mt-2" style={{ fontSize: '0.8rem', fontStyle: 'italic' }}>
+              Use these tools to manually save your data to your device or restore it later.
+            </p>
+          </div>
         </div>
       </div>
     </div>

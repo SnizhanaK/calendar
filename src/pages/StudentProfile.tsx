@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, ChevronDown, ChevronRight, Clipboard } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { Lesson } from '../types';
 import LessonFormModal from '../components/LessonFormModal';
@@ -21,36 +21,35 @@ function LessonHistoryItem({
     <div className="card" style={{ padding: '0', transition: 'all 0.2s', overflow: 'hidden' }}>
       {/* Collapsed Header / Preview */}
       <div 
-        className="flex justify-between items-start" 
+        className="flex justify-between items-center" 
         style={{ 
-          padding: '1rem', 
+          padding: '1.25rem 1.5rem', 
           cursor: 'pointer',
           borderBottom: isExpanded ? '1px solid var(--border-color)' : 'none',
           backgroundColor: isExpanded ? 'var(--bg-color)' : 'transparent'
         }}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-start gap-3">
-          <div style={{ marginTop: '2px', color: 'var(--text-muted)' }}>
-            {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+        <div className="flex items-center gap-4">
+          <div style={{ color: 'var(--accent-green)', display: 'flex' }}>
+            {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
           </div>
           <div>
-            <div style={{ fontWeight: 600 }}>
-              {new Date(lesson.lesson_date).toLocaleDateString()}
-              {lesson.lesson_time && <span className="text-muted" style={{ fontWeight: 400, marginLeft: '8px' }}>@ {lesson.lesson_time}</span>}
+            <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)' }}>
+              {new Date(lesson.lesson_date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {lesson.lesson_time && <span className="text-muted" style={{ fontWeight: 400, marginLeft: '8px' }}>• {lesson.lesson_time}</span>}
             </div>
-            <div className="text-muted" style={{ fontSize: '0.875rem' }}>
-              Slide: {lesson.slide_reached || 'N/A'} {lesson.lesson_price && lesson.lesson_price !== '0' && ` • Price: ${lesson.lesson_price}`}
+            <div className="text-muted" style={{ fontSize: '0.875rem', marginTop: '2px' }}>
+              Slide: {lesson.slide_reached || '—'} {lesson.lesson_notes && `• ${lesson.lesson_notes.substring(0, 40)}${lesson.lesson_notes.length > 40 ? '...' : ''}`}
             </div>
           </div>
         </div>
         
-        {/* Actions (stop propagation to avoid expanding/collapsing when clicking buttons) */}
         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-          <button className="btn-icon text-muted" onClick={() => onEdit(lesson)} title="Edit">
+          <button className="btn-icon" style={{ opacity: 0.6 }} onClick={() => onEdit(lesson)} title="Edit">
             <Edit2 size={16} />
           </button>
-          <button className="btn-icon" style={{ color: '#d9534f' }} onClick={() => onDelete(lesson.id)} title="Delete">
+          <button className="btn-icon" style={{ color: '#c2410c', opacity: 0.8 }} onClick={() => onDelete(lesson.id)} title="Delete">
             <Trash2 size={16} />
           </button>
         </div>
@@ -102,7 +101,7 @@ export default function StudentProfile() {
   // ... rest of StudentProfile code will pick up below
 
   const navigate = useNavigate();
-  const { students, lessons, addLesson, editLesson, deleteLesson, updateStudent, deleteStudent } = useStore();
+  const { students, lessons, addLesson, editLesson, deleteLesson, updateStudent, deleteStudent, restoreLesson, restoreStudent } = useStore();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isStudentFormOpen, setIsStudentFormOpen] = useState(false);
@@ -122,7 +121,10 @@ export default function StudentProfile() {
     .filter((l) => l.student_id === id)
     .sort((a, b) => new Date(b.lesson_date).getTime() - new Date(a.lesson_date).getTime());
 
-  const latestLesson = studentLessons[0];
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const pastLessons = studentLessons.filter(l => l.lesson_date <= todayStr);
+  const latestLesson = pastLessons[0];
 
   const handleSaveLesson = (lessonData: Omit<Lesson, 'id' | 'created_at' | 'updated_at'>) => {
     if (editingLesson) {
@@ -140,16 +142,23 @@ export default function StudentProfile() {
   };
 
   const handleDelete = (lessonId: string) => {
-    if (window.confirm('Are you sure you want to delete this lesson? This action cannot be undone.')) {
-      deleteLesson(lessonId);
-    }
+    deleteLesson(lessonId, (deletedLesson) => {
+      window.__showUndoToast({
+        message: 'Lesson deleted',
+        onUndo: () => restoreLesson(deletedLesson)
+      });
+    });
   };
 
   const handleStudentDelete = () => {
-    if (window.confirm(`Are you sure you want to completely delete ${student.name} AND all of their lesson history? This action cannot be undone.`)) {
-      deleteStudent(student.id);
+    const studentName = student.name;
+    deleteStudent(student.id, (deletedStudent, deletedLessons) => {
+      window.__showUndoToast({
+        message: `Student "${studentName}" and all data deleted`,
+        onUndo: () => restoreStudent(deletedStudent, deletedLessons)
+      });
       navigate('/');
-    }
+    });
   };
 
   const openAddModal = () => {
@@ -175,77 +184,72 @@ export default function StudentProfile() {
       </div>
 
       {/* Student Overview Dossier */}
-      <div className="card mb-6">
-        <div className="flex flex-col gap-4" style={{ paddingBottom: '0.5rem' }}>
-          <div className="flex justify-between items-start">
+      <div className="card mb-6" style={{ borderLeft: '6px solid var(--accent-green)' }}>
+        <div className="flex flex-col gap-5">
+          <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.5rem' }}>
             <div className="flex flex-col gap-1">
-              <span className="text-muted" style={{ fontSize: '0.875rem' }}>Language</span>
-              <strong>{student.language}</strong>
+              <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Language</span>
+              <span style={{ fontWeight: 600 }}>{student.language}</span>
             </div>
-            <div className="flex flex-col gap-1 text-right">
-              <span className="text-muted" style={{ fontSize: '0.875rem' }}>Status</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</span>
               <span style={{ 
                 color: student.status === 'Active' ? 'var(--accent-green)' : 'var(--text-muted)',
-                fontWeight: 600
+                fontWeight: 700
               }}>{student.status}</span>
             </div>
-          </div>
-          <div className="flex justify-between items-start">
             <div className="flex flex-col gap-1">
-              <span className="text-muted" style={{ fontSize: '0.875rem' }}>Contact Info</span>
-              <span>{student.contact_info || <span className="text-muted italic">Not specified</span>}</span>
+              <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact</span>
+              <span style={{ wordBreak: 'break-word' }}>{student.contact_info || <em className="text-muted">None</em>}</span>
             </div>
-            <div className="flex flex-col gap-1 text-right">
-              <span className="text-muted" style={{ fontSize: '0.875rem' }}>Default Price</span>
-              <strong>{student.price || '0'}</strong>
+            <div className="flex flex-col gap-1">
+              <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Price</span>
+              <span style={{ fontWeight: 600 }}>{student.price || '0'} €</span>
             </div>
           </div>
-          {student.general_notes && (
-            <div className="mt-2 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
-              <span className="text-muted block mb-1" style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>General Notes</span>
-              <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{student.general_notes}</div>
+
+          {(student.goals || student.general_notes) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+              {student.goals && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Learning Goals</span>
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{student.goals}</div>
+                </div>
+              )}
+              {student.general_notes && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>General Notes</span>
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', fontSize: '0.9rem' }}>{student.general_notes}</div>
+                </div>
+              )}
             </div>
           )}
 
-          <div className="flex gap-2 mt-2 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
-            <button className="btn btn-ghost" onClick={() => setIsStudentFormOpen(true)} style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}>
+          <div className="flex gap-4 mt-2 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
+            <button className="btn btn-ghost" onClick={() => setIsStudentFormOpen(true)} style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
               <Edit2 size={16} /> Edit profile
             </button>
-            <button className="btn btn-ghost" onClick={handleStudentDelete} style={{ color: '#d9534f', fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}>
+            <button className="btn btn-ghost" onClick={handleStudentDelete} style={{ color: '#c2410c', fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
               <Trash2 size={16} /> Delete student
             </button>
           </div>
         </div>
       </div>
 
-      <div className="card mb-6">
+      <div className="card mb-8" style={{ backgroundColor: 'var(--bg-color)', borderStyle: 'dashed' }}>
         <div>
-          <h3 className="mb-2 text-muted" style={{ fontSize: '0.9rem' }}>Latest Summary</h3>
+          <h3 className="mb-3 text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Latest Summary</h3>
           {latestLesson ? (
-            <div className="flex flex-col gap-3" style={{ fontSize: '0.95rem' }}>
-              {(latestLesson.lesson_notes || latestLesson.next_material_notes || latestLesson.slide_reached) ? (
-                <>
-                  {latestLesson.slide_reached && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Current Slide:</span>
-                      <strong style={{ fontWeight: 500 }}>{latestLesson.slide_reached}</strong>
-                    </div>
-                  )}
-                  {latestLesson.lesson_notes && (
-                    <div>
-                      <div className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Lesson Notes</div>
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{latestLesson.lesson_notes}</div>
-                    </div>
-                  )}
-                  {latestLesson.next_material_notes && (
-                    <div>
-                      <div className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Next Session</div>
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{latestLesson.next_material_notes}</div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-muted italic" style={{ fontSize: '0.85rem' }}>No annotations / notes saved for the latest lesson.</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-muted" style={{ fontSize: '0.875rem' }}>Current Slide:</span>
+                <span style={{ fontWeight: 600, fontSize: '1.25rem', color: 'var(--accent-green)' }}>{latestLesson.slide_reached || '—'}</span>
+              </div>
+              {latestLesson.lesson_notes && (
+                <div>
+                  <div className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '4px' }}>Notes</div>
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{latestLesson.lesson_notes}</div>
+                </div>
               )}
             </div>
           ) : (
@@ -255,7 +259,7 @@ export default function StudentProfile() {
       </div>
 
       {/* Lesson History Header */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 mt-6">
         <h2>Lesson History</h2>
         <button className="btn btn-primary" onClick={openAddModal}>
           <Plus size={18} /> Add
@@ -264,13 +268,14 @@ export default function StudentProfile() {
 
       {/* Lesson List */}
       <div className="flex flex-col gap-4">
-        {studentLessons.length === 0 ? (
-          <div className="card text-center text-muted" style={{ padding: '2rem' }}>
-            <p>No lessons found for {student.name}.</p>
-            <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Click "Add" to create the first record.</p>
+        {pastLessons.length === 0 ? (
+          <div className="card text-center py-12" style={{ border: '1px dashed var(--border-color)', backgroundColor: 'transparent' }}>
+            <Clipboard size={40} className="text-muted mb-3 mx-auto opacity-20" />
+            <h3 style={{ margin: '0 0 0.5rem', color: 'var(--text-main)', fontSize: '1.1rem' }}>No lesson history</h3>
+            <p className="text-muted" style={{ margin: 0, fontSize: '0.9rem' }}>Complete a lesson with {student.name} to see the history here.</p>
           </div>
         ) : (
-          studentLessons.map((lesson) => (
+          pastLessons.map((lesson) => (
             <LessonHistoryItem 
               key={lesson.id} 
               lesson={lesson} 

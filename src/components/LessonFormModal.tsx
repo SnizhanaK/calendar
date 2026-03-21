@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore';
 interface LessonFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (lessonData: Omit<Lesson, 'id' | 'created_at' | 'updated_at'>) => void;
+  onSave: (lessonData: Omit<Lesson, 'id' | 'created_at' | 'updated_at'>, updateSeries?: boolean) => void;
   studentId: string;
   initialData?: Lesson | null;
 }
@@ -22,6 +22,8 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
   const [notes, setNotes] = useState('');
   const [homework, setHomework] = useState('');
   const [nextNotes, setNextNotes] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [updateSeries, setUpdateSeries] = useState(false);
   
   // Dynamic custom values string -> string map
   const [customValues, setCustomValues] = useState<Record<string, string>>({});
@@ -47,6 +49,8 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
       setHomework(initialData.homework || '');
       setNextNotes(initialData.next_material_notes || '');
       setCustomValues(initialData.custom_fields || {});
+      setIsRecurring(initialData.isRecurring || false);
+      setUpdateSeries(false);
     } else {
       setDate(new Date().toISOString().split('T')[0]);
       setTime('12:00');
@@ -56,6 +60,8 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
       setHomework('');
       setNextNotes('');
       setCustomValues({});
+      setIsRecurring(false);
+      setUpdateSeries(false);
     }
   }, [initialData, isOpen, student]);
 
@@ -68,13 +74,13 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
       lesson_date: new Date(date).toISOString(),
       lesson_time: time,
       lesson_end_time: endTime,
-      lesson_price: student?.price || '0', // Inherit from dossier natively
+      lesson_price: student?.price || '0', 
       slide_reached: slide,
       lesson_notes: notes,
       homework,
       next_material_notes: nextNotes,
       custom_fields: customValues,
-    });
+    }, updateSeries);
     onClose();
   };
 
@@ -167,6 +173,34 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
               />
             </div>
           ))}
+
+          {initialData?.recurringId ? (
+            <div className="flex items-center gap-3 p-4 rounded-xl" style={{ backgroundColor: 'rgba(125, 140, 122, 0.08)', border: '1px solid rgba(125, 140, 122, 0.2)' }}>
+              <input 
+                type="checkbox" 
+                id="updateSeries"
+                checked={updateSeries} 
+                onChange={(e) => setUpdateSeries(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <label htmlFor="updateSeries" style={{ fontSize: '0.9rem', cursor: 'pointer', fontWeight: 600 }}>
+                Update entire recurring series
+              </label>
+            </div>
+          ) : !initialData && (
+            <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)' }}>
+              <input 
+                type="checkbox" 
+                id="isRecurring"
+                checked={isRecurring} 
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <label htmlFor="isRecurring" style={{ fontSize: '0.9rem', cursor: 'pointer', fontWeight: 500 }}>
+                Repeat weekly (next 8 weeks)
+              </label>
+            </div>
+          )}
 
           <div className="flex gap-3 justify-end mt-4">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>

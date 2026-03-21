@@ -10,7 +10,7 @@ interface BookingModalProps {
 }
 
 export default function BookingModal({ isOpen, onClose, prefilledSlot }: BookingModalProps) {
-  const { students, addStudent, addLesson, customFields } = useStore();
+  const { students, addStudent, addLesson, addRecurringLesson, customFields } = useStore();
   
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
   
@@ -42,6 +42,7 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
 
   // Lesson state
   const [note, setNote] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
 
   // Update default selected student if active list changes
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
     const initialCustomFields: Record<string, string> = {};
     customFields.forEach(f => { initialCustomFields[f.label] = ''; });
 
-    addLesson({
+    const lessonData = {
       student_id: targetStudentId,
       lesson_date: new Date(dateStr).toISOString(),
       lesson_time: startTime,
@@ -85,7 +86,13 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
       homework: '',
       next_material_notes: '',
       custom_fields: initialCustomFields
-    });
+    };
+
+    if (isRecurring) {
+      addRecurringLesson(lessonData, 8); // Default to 8 weeks
+    } else {
+      addLesson(lessonData);
+    }
 
     onClose();
   };
@@ -227,6 +234,19 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
               value={note} 
               onChange={(e) => setNote(e.target.value)} 
             />
+          </div>
+
+          <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)' }}>
+            <input 
+              type="checkbox" 
+              id="isRecurring"
+              checked={isRecurring} 
+              onChange={(e) => setIsRecurring(e.target.checked)}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <label htmlFor="isRecurring" style={{ fontSize: '0.9rem', cursor: 'pointer', fontWeight: 500 }}>
+              Repeat weekly (next 8 weeks)
+            </label>
           </div>
 
           <div className="flex gap-3 justify-end mt-4">

@@ -14,7 +14,9 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
   const [language, setLanguage] = useState<'Ukrainian' | 'Russian'>('Ukrainian');
   const [price, setPrice] = useState('0');
   const [contactInfo, setContactInfo] = useState('');
+  const [pinnedNotes, setPinnedNotes] = useState('');
   const [generalNotes, setGeneralNotes] = useState('');
+  const [goals, setGoals] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
 
   useEffect(() => {
@@ -24,14 +26,18 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
       setLanguage(initialData.language);
       setPrice(initialData.price);
       setContactInfo(initialData.contact_info || '');
+      setPinnedNotes(initialData.pinnedNotes || '');
       setGeneralNotes(initialData.general_notes || '');
+      setGoals(initialData.goals || '');
       setStatus(initialData.status);
     } else {
       setName('');
       setLanguage('Ukrainian');
       setPrice('0');
       setContactInfo('');
+      setPinnedNotes('');
       setGeneralNotes('');
+      setGoals('');
       setStatus('Active');
     }
   }, [initialData, isOpen]);
@@ -46,6 +52,8 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
       language,
       price: price.trim() || '0',
       contact_info: contactInfo.trim(),
+      pinnedNotes: pinnedNotes.trim(),
+      goals: goals.trim(),
       general_notes: generalNotes.trim(),
       status
     });
@@ -101,13 +109,35 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
           </div>
 
           <div className="input-group">
+            <label className="input-label">Pinned Student Info</label>
+            <textarea 
+              className="input-field" 
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={pinnedNotes} 
+              onChange={(e) => setPinnedNotes(e.target.value)}
+              placeholder="Important long-term info (interests, quirks)..."
+            />
+          </div>
+
+          <div className="input-group">
+            <label className="input-label">Student Goals</label>
+            <textarea 
+              className="input-field" 
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={goals} 
+              onChange={(e) => setGoals(e.target.value)}
+              placeholder="What does the student want to achieve?..."
+            />
+          </div>
+
+          <div className="input-group">
             <label className="input-label">General Notes</label>
             <textarea 
               className="input-field" 
               style={{ minHeight: '80px', resize: 'vertical' }}
               value={generalNotes} 
               onChange={(e) => setGeneralNotes(e.target.value)}
-              placeholder="Permanent student notes, goals, comments..."
+              placeholder="Permanent comments, family info, etc..."
             />
           </div>
 

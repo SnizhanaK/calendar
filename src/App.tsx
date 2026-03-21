@@ -6,10 +6,27 @@ import { Moon, Sun, Settings } from 'lucide-react';
 import Home from './pages/Home';
 import StudentProfile from './pages/StudentProfile';
 import SettingsModal from './components/SettingsModal';
+import UndoToast from './components/ui/UndoToast';
+
+export interface ToastState {
+  message: string;
+  onUndo: () => void;
+}
+
+declare global {
+  interface Window {
+    __showUndoToast: (toast: ToastState) => void;
+  }
+}
 
 function App() {
   const { theme, toggleTheme } = useStore();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  window.__showUndoToast = (toastData: ToastState) => {
+    setToast(toastData);
+  };
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -23,7 +40,10 @@ function App() {
     <BrowserRouter>
       <div className="app-layout">
         <header className="container flex items-center justify-between" style={{ paddingBottom: '1rem', paddingTop: '1.5rem' }}>
-          <h1 style={{ margin: 0 }}>Students</h1>
+          <div className="flex items-center gap-3">
+            <img src="/src/assets/logo.jpeg" alt="Portuguese Learning Logo" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>Students</h1>
+          </div>
           <div className="flex gap-2">
             <button onClick={() => setIsSettingsOpen(true)} className="btn-icon" aria-label="Settings">
               <Settings size={20} />
@@ -45,6 +65,17 @@ function App() {
           isOpen={isSettingsOpen} 
           onClose={() => setIsSettingsOpen(false)} 
         />
+
+        {toast && (
+          <UndoToast 
+            message={toast.message} 
+            onUndo={() => {
+              toast.onUndo();
+              setToast(null);
+            }} 
+            onDismiss={() => setToast(null)} 
+          />
+        )}
       </div>
     </BrowserRouter>
   );

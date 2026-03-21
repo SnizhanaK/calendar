@@ -7,6 +7,8 @@ export interface Student {
   language: StudentLanguage;
   price: string;
   contact_info?: string;
+  goals?: string;
+  pinnedNotes?: string;
   general_notes?: string;
   status: StudentStatus;
 }
@@ -29,6 +31,8 @@ export interface Lesson {
   homework: string;
   next_material_notes: string;
   custom_fields: Record<string, string>;
+  recurringId?: string; // Links occurrences to a series
+  isRecurring?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { startOfWeek, addDays, format, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import type { Lesson } from '../types';
 import BookingModal from './BookingModal';
+import LessonFormModal from './LessonFormModal';
 
 export default function WeeklyCalendar() {
   const navigate = useNavigate();
@@ -12,6 +14,9 @@ export default function WeeklyCalendar() {
 
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingSlot, setBookingSlot] = useState<{ day: Date; hour: number; minute: number } | null>(null);
+  
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
   const startDate = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday start
 
@@ -119,49 +124,106 @@ export default function WeeklyCalendar() {
                   ))}
 
                   {/* Absolute Positioned Lessons */}
-                  {dayLessons.map(lesson => {
-                    if (!lesson.lesson_time) return null;
-                    const student = students.find(s => s.id === lesson.student_id);
-                    
-                    const [sH, sM] = lesson.lesson_time.split(':').map(Number);
-                    const topPixels = (sH - 11) * 120 + sM * 2;
-                    
-                    let durationMins = 50; 
-                    if (lesson.lesson_end_time) {
-                      const [eH, eM] = lesson.lesson_end_time.split(':').map(Number);
-                      durationMins = (eH * 60 + eM) - (sH * 60 + sM);
-                      if (durationMins <= 0) durationMins = 50; 
-                    }
-                    const heightPixels = durationMins * 2;
+                  {(() => {
+                    // Logic to handle overlaps
+                    const sortedLessons = [...dayLessons].sort((a, b) => {
+                      const [ah, am] = a.lesson_time.split(':').map(Number);
+                      const [bh, bm] = b.lesson_time.split(':').map(Number);
+                      return (ah * 60 + am) - (bh * 60 + bm);
+                    });
 
-                    return (
-                      <div 
-                        key={lesson.id}
-                        style={{
-                          position: 'absolute',
-                          top: `${topPixels}px`,
-                          height: `${heightPixels}px`,
-                          left: '4px',
-                          right: '4px',
-                          backgroundColor: 'rgba(99, 122, 95, 0.1)',
-                          borderLeft: '3px solid var(--accent-green)',
-                          padding: '4px 6px',
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                          color: 'var(--text-main)',
-                          overflow: 'hidden',
-                          zIndex: 10,
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                        }}
-                        onClick={() => navigate(`/student/${student?.id}`)}
-                        title={`Go to ${student?.name}'s profile`}
-                      >
-                        <strong style={{ display: 'block' }}>{lesson.lesson_time} - {lesson.lesson_end_time || '??'}</strong>
-                        <div style={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{student?.name || 'Unknown'}</div>
-                      </div>
-                    );
-                  })}
+                    const getMinutes = (timeStr: string) => {
+                      const [h, m] = timeStr.split(':').map(Number);
+                      return h * 60 + m;
+                    };
+
+                    const getEndTimeStr = (lesson: Lesson) => {
+                      if (lesson.lesson_end_time) return lesson.lesson_end_time;
+                      const [h, m] = lesson.lesson_time.split(':').map(Number);
+                      const total = h * 60 + m + 50;
+                      return `${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}`;
+                    };
+
+                    // Grouping logic: find blocks of overlapping lessons
+                    const groups: Lesson[][] = [];
+                    sortedLessons.forEach(lesson => {
+                      let added = false;
+                      for (const group of groups) {
+                        const overlaps = group.some(gLesson => {
+                          const startA = getMinutes(lesson.lesson_time);
+                          const endA = getMinutes(getEndTimeStr(lesson));
+                          const startB = getMinutes(gLesson.lesson_time);
+                          const endB = getMinutes(getEndTimeStr(gLesson));
+                          return startA < endB && startB < endA;
+                        });
+                        if (overlaps) {
+                          group.push(lesson);
+                          added = true;
+                          break;
+                        }
+                      }
+                      if (!added) groups.push([lesson]);
+                    });
+
+                    return groups.map(group => {
+                      return group.map((lesson, idx) => {
+                        const student = students.find(s => s.id === lesson.student_id);
+                        const [sH, sM] = lesson.lesson_time.split(':').map(Number);
+                        const topPixels = (sH - 11) * 120 + sM * 2;
+                        
+                        let durationMins = 50; 
+                        if (lesson.lesson_end_time) {
+                          const [eH, eM] = lesson.lesson_end_time.split(':').map(Number);
+                          durationMins = (eH * 60 + eM) - (sH * 60 + sM);
+                          if (durationMins <= 0) durationMins = 50; 
+                        }
+                        const heightPixels = durationMins * 2;
+
+                        const widthPercent = 100 / group.length;
+                        const leftPercent = idx * widthPercent;
+
+                        return (
+                          <div 
+                            key={lesson.id}
+                            style={{
+                              position: 'absolute',
+                              top: `${topPixels}px`, // Fixed backticks here
+                              height: `${heightPixels}px`, // Fixed backticks here
+                              left: `${leftPercent}%`, // Fixed backticks here
+                              width: `${widthPercent - 1}%`, // Fixed backticks here
+                              backgroundColor: 'rgba(99, 122, 95, 0.1)',
+                              borderLeft: '3px solid var(--accent-green)',
+                              padding: '4px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              color: 'var(--text-main)',
+                              overflow: 'hidden',
+                              zIndex: 10,
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                            }}
+                            onClick={() => navigate(`/student/${student?.id}`)}
+                            title={`Go to ${student?.name}'s profile`}
+                          >
+                            <strong style={{ display: 'block' }}>{lesson.lesson_time} - {lesson.lesson_end_time || '??'}</strong>
+                            <div style={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{student?.name || 'Unknown'}</div>
+                            <div 
+                              className="flex items-center justify-center" 
+                              style={{ position: 'absolute', bottom: '2px', right: '2px', backgroundColor: 'var(--accent-green)', color: 'white', borderRadius: '4px', width: '20px', height: '20px', fontSize: '0.65rem', opacity: 0.8 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingLesson(lesson);
+                                setIsEditOpen(true);
+                              }}
+                              title="Edit Lesson"
+                            >
+                              ✎
+                            </div>
+                          </div>
+                        );
+                      });
+                    });
+                  })()}
                 </div>
               );
             })}
@@ -178,6 +240,18 @@ export default function WeeklyCalendar() {
           isOpen={isBookingOpen} 
           onClose={() => setIsBookingOpen(false)} 
           prefilledSlot={bookingSlot} 
+        />
+      )}
+      {isEditOpen && editingLesson && (
+        <LessonFormModal
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          onSave={(lessonData, updateSeries) => {
+            useStore.getState().editLesson(editingLesson.id, lessonData, updateSeries);
+            setIsEditOpen(false);
+          }}
+          studentId={editingLesson.student_id}
+          initialData={editingLesson}
         />
       )}
     </div>
