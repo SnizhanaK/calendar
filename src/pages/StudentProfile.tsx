@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Trash2, Settings, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { Lesson } from '../types';
 import LessonFormModal from '../components/LessonFormModal';
@@ -172,14 +172,6 @@ export default function StudentProfile() {
           </button>
           <h1 style={{ margin: 0 }}>{student.name}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-icon" onClick={() => setIsStudentFormOpen(true)} aria-label="Edit Student" title="Edit Student">
-            <Settings size={20} />
-          </button>
-          <button className="btn-icon" style={{ color: '#d9534f' }} onClick={handleStudentDelete} aria-label="Delete Student" title="Delete Student">
-            <Trash2 size={20} />
-          </button>
-        </div>
       </div>
 
       {/* Student Overview Dossier */}
@@ -214,6 +206,15 @@ export default function StudentProfile() {
               <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{student.general_notes}</div>
             </div>
           )}
+
+          <div className="flex gap-2 mt-2 pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
+            <button className="btn btn-ghost" onClick={() => setIsStudentFormOpen(true)} style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}>
+              <Edit2 size={16} /> Edit profile
+            </button>
+            <button className="btn btn-ghost" onClick={handleStudentDelete} style={{ color: '#d9534f', fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}>
+              <Trash2 size={16} /> Delete student
+            </button>
+          </div>
         </div>
       </div>
 

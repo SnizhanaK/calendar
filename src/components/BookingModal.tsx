@@ -108,21 +108,36 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
           <div className="flex gap-2">
             <div className="input-group" style={{ flex: 1 }}>
               <label className="input-label" style={{ fontSize: '0.75rem' }}>Date</label>
-              <input type="date" required className="input-field" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
+              <input 
+                type="date" 
+                required 
+                className="input-field" 
+                value={dateStr} 
+                onChange={(e) => setDateStr(e.target.value)}
+                style={{ border: 'none', padding: '0', backgroundColor: 'transparent', fontWeight: 600 }}
+              />
             </div>
             <div className="input-group" style={{ flex: 1 }}>
               <label className="input-label" style={{ fontSize: '0.75rem' }}>Start Time</label>
-              <input type="time" required step="3600" className="input-field" value={startTime} onChange={(e) => {
-                const newT = e.target.value;
-                setStartTime(newT);
-                setEndTime(addMinutesToTime(newT, 50));
-              }} />
-            </div>
-            <div className="input-group" style={{ flex: 1 }}>
-              <label className="input-label" style={{ fontSize: '0.75rem' }}>End (Auto 50m)</label>
-              <div className="input-field" style={{ backgroundColor: 'var(--bg-color)', display: 'flex', alignItems: 'center', opacity: 0.7 }}>
-                {endTime}
-              </div>
+              <select 
+                className="input-field" 
+                value={startTime} 
+                onChange={(e) => {
+                  const newT = e.target.value;
+                  setStartTime(newT);
+                  setEndTime(addMinutesToTime(newT, 50));
+                }}
+                style={{ fontWeight: 600 }}
+              >
+                {Array.from({ length: 21 }).map((_, i) => {
+                  const totalMins = i * 30;
+                  const h = 11 + Math.floor(totalMins / 60);
+                  const m = totalMins % 60;
+                  if (h > 21 || (h === 21 && m > 0)) return null;
+                  const val = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                  return <option key={val} value={val}>{val}</option>;
+                }).filter(Boolean)}
+              </select>
             </div>
           </div>
 

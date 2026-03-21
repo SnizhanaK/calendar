@@ -22,8 +22,9 @@ export default function WeeklyCalendar() {
   // Generate 30-minute slots from 11:00 to 21:00
   const timeSlots = useMemo(() => {
     const slots = [];
-    for (let h = 11; h <= 21; h++) {
-      slots.push({ hour: h, minute: 0 });
+    for (let hour = 11; hour <= 21; hour++) {
+      slots.push({ hour, minute: 0 });
+      if (hour < 21) slots.push({ hour, minute: 30 });
     }
     return slots;
   }, []);
@@ -78,18 +79,24 @@ export default function WeeklyCalendar() {
             ))}
           </div>
 
-          {/* Flex Body for Absolute Timetables */}
-          <div style={{ display: 'flex', backgroundColor: 'var(--border-color)', gap: '1px', position: 'relative' }}>
+          {/* Grid Container with Borders */}
+          <div style={{ display: 'flex', position: 'relative', border: '1px solid var(--border-color)', borderBottom: 'none' }}>
             
             {/* Time Axis Column */}
-            <div style={{ width: '120px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1px' }}>
+            <div style={{ width: '120px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
               {timeSlots.map(({ hour, minute }) => {
                 const tz = getTzLayout(weekDays[0], hour, minute);
                 return (
-                  <div key={`${hour}:${minute}`} style={{ height: '120px', backgroundColor: 'var(--bg-color)', padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.75rem' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{tz.georgia} <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.7rem' }}>GE</span></div>
-                    <div className="text-muted">{tz.portugal} <span style={{ fontSize: '0.65rem' }}>PT</span></div>
-                    <div className="text-muted">{tz.ukraine} <span style={{ fontSize: '0.65rem' }}>UA</span></div>
+                  <div key={`${hour}:${minute}`} style={{ height: '60px', backgroundColor: 'var(--bg-color)', padding: minute === 0 ? '6px 8px' : '2px 8px', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.75rem', borderBottom: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
+                    {minute === 0 ? (
+                      <>
+                        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{tz.georgia} <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.7rem' }}>GE</span></div>
+                        <div className="text-muted">{tz.portugal} <span style={{ fontSize: '0.65rem' }}>PT</span></div>
+                        <div className="text-muted">{tz.ukraine} <span style={{ fontSize: '0.65rem' }}>UA</span></div>
+                      </>
+                    ) : (
+                      <div className="text-muted" style={{ fontSize: '0.65rem', opacity: 0.5 }}>:30</div>
+                    )}
                   </div>
                 );
               })}
@@ -99,13 +106,13 @@ export default function WeeklyCalendar() {
             {weekDays.map((day) => {
               const dayLessons = lessons.filter(l => l.lesson_date && isSameDay(new Date(l.lesson_date), day));
                 return (
-                <div key={day.toISOString()} style={{ flex: 1, backgroundColor: 'var(--card-bg)', position: 'relative', minHeight: `${timeSlots.length * 121}px`, display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <div key={day.toISOString()} style={{ flex: 1, backgroundColor: 'var(--card-bg)', position: 'relative', minHeight: `${timeSlots.length * 60}px`, display: 'flex', flexDirection: 'column', borderRight: day === weekDays[6] ? 'none' : '1px solid var(--border-color)' }}>
                   
                   {/* Background Clickable Grid Slots */}
                   {timeSlots.map(({ hour, minute }) => (
                     <div 
                       key={`${hour}:${minute}`} 
-                      style={{ height: '120px', width: '100%', cursor: 'pointer', backgroundColor: 'var(--card-bg)' }}
+                      style={{ height: '60px', width: '100%', cursor: 'pointer', backgroundColor: 'var(--card-bg)', borderBottom: minute === 0 ? '1px dashed var(--border-color)' : '1px solid var(--border-color)', opacity: minute === 30 ? 1 : 0.8 }}
                       className="calendar-slot"
                       onClick={() => handleSlotClick(day, hour, minute)}
                     />
@@ -117,7 +124,7 @@ export default function WeeklyCalendar() {
                     const student = students.find(s => s.id === lesson.student_id);
                     
                     const [sH, sM] = lesson.lesson_time.split(':').map(Number);
-                    const topPixels = (sH - 11) * 121 + sM * 2;
+                    const topPixels = (sH - 11) * 120 + sM * 2;
                     
                     let durationMins = 50; 
                     if (lesson.lesson_end_time) {
