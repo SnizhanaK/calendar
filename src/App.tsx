@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { useStore } from './store/useStore';
 import { Moon, Sun, Settings } from 'lucide-react';
 
@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import StudentProfile from './pages/StudentProfile';
 import SettingsModal from './components/SettingsModal';
 import UndoToast from './components/ui/UndoToast';
+import logoUrl from './assets/logo.jpeg';
 
 export interface ToastState {
   message: string;
@@ -37,11 +38,11 @@ function App() {
   }, [theme]);
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="app-layout">
         <header className="container flex items-center justify-between" style={{ paddingBottom: '1rem', paddingTop: '1.5rem' }}>
           <div className="flex items-center gap-3">
-            <img src="/src/assets/logo.jpeg" alt="Portuguese Learning Logo" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
+            <img src={logoUrl} alt="Portuguese Learning Logo" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>Students</h1>
           </div>
           <div className="flex gap-2">
@@ -77,7 +78,7 @@ function App() {
           />
         )}
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
