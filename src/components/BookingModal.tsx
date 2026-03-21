@@ -22,6 +22,7 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentLang, setNewStudentLang] = useState<'Ukrainian' | 'Russian'>('Ukrainian');
   const [newStudentPrice, setNewStudentPrice] = useState('0');
+  const [newStudentCurrency, setNewStudentCurrency] = useState<'EUR' | 'USD'>('EUR');
 
   // Time state
   const addMinutesToTime = (timeStr: string, minutesToAdd: number) => {
@@ -64,7 +65,7 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
       targetStudentId = addStudent({
         name: newStudentName.trim(),
         language: newStudentLang,
-        price: newStudentPrice,
+        price: `${newStudentPrice} ${newStudentCurrency}`,
         status: 'Active'
       });
     } else {
@@ -89,7 +90,7 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
     };
 
     if (isRecurring) {
-      addRecurringLesson(lessonData, 8); // Default to 8 weeks
+      addRecurringLesson(lessonData, 4); // 4 weeks = ~1 month
     } else {
       addLesson(lessonData);
     }
@@ -148,24 +149,55 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
             </div>
           </div>
 
-          {/* Toggle standard / new student */}
-          <div className="flex gap-2" style={{ padding: '4px', backgroundColor: 'var(--bg-color)', borderRadius: '8px' }}>
+          {/* Toggle existing / new student — enlarged and well-spaced */}
+          <div style={{ 
+            backgroundColor: 'var(--bg-color)', 
+            borderRadius: '12px', 
+            border: '1px solid var(--border-color)',
+            padding: '4px',
+            display: 'flex',
+            gap: '4px'
+          }}>
             <button 
               type="button"
-              className={`btn-ghost flex-1 ${mode === 'existing' ? 'text-main' : 'text-muted'}`}
-              style={{ backgroundColor: mode === 'existing' ? 'var(--card-bg)' : 'transparent', fontWeight: mode === 'existing' ? 600 : 400, boxShadow: mode === 'existing' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
               onClick={() => setMode('existing')}
               disabled={activeStudents.length === 0}
+              style={{
+                flex: 1,
+                padding: '0.7rem 0.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: activeStudents.length === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: mode === 'existing' ? 600 : 400,
+                fontSize: '0.9rem',
+                backgroundColor: mode === 'existing' ? 'var(--card-bg)' : 'transparent',
+                color: mode === 'existing' ? 'var(--text-main)' : 'var(--text-muted)',
+                boxShadow: mode === 'existing' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                transition: 'all 0.15s'
+              }}
             >
-              <Users size={16} className="inline mr-2" /> Existing Student
+              <Users size={16} /> Existing Student
             </button>
             <button 
               type="button"
-              className={`btn-ghost flex-1 ${mode === 'new' ? 'text-main' : 'text-muted'}`}
-              style={{ backgroundColor: mode === 'new' ? 'var(--card-bg)' : 'transparent', fontWeight: mode === 'new' ? 600 : 400, boxShadow: mode === 'new' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
               onClick={() => setMode('new')}
+              style={{
+                flex: 1,
+                padding: '0.7rem 0.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: mode === 'new' ? 600 : 400,
+                fontSize: '0.9rem',
+                backgroundColor: mode === 'new' ? 'var(--card-bg)' : 'transparent',
+                color: mode === 'new' ? 'var(--text-main)' : 'var(--text-muted)',
+                boxShadow: mode === 'new' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                transition: 'all 0.15s'
+              }}
             >
-              <UserPlus size={16} className="inline mr-2" /> New Student
+              <UserPlus size={16} /> New Student
             </button>
           </div>
 
@@ -186,7 +218,7 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
               </select>
             </div>
           ) : (
-            <div className="flex flex-col gap-3 card" style={{ backgroundColor: 'var(--bg-color)', padding: '1rem', border: '1px solid var(--border-color)' }}>
+            <div className="flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
               <div className="input-group">
                 <label className="input-label">Student Name *</label>
                 <input 
@@ -213,13 +245,26 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
                 </div>
 
                 <div className="input-group" style={{ flex: 1 }}>
-                  <label className="input-label">Price</label>
-                  <input 
-                    type="number" 
-                    className="input-field" 
-                    value={newStudentPrice} 
-                    onChange={(e) => setNewStudentPrice(e.target.value)} 
-                  />
+                  <label className="input-label">Price per lesson</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input 
+                      type="number" 
+                      min="0"
+                      className="input-field" 
+                      style={{ flex: 1, minWidth: 0 }}
+                      value={newStudentPrice} 
+                      onChange={(e) => setNewStudentPrice(e.target.value)} 
+                    />
+                    <select
+                      className="input-field"
+                      style={{ width: '72px', flexShrink: 0, fontWeight: 600 }}
+                      value={newStudentCurrency}
+                      onChange={(e) => setNewStudentCurrency(e.target.value as 'EUR' | 'USD')}
+                    >
+                      <option value="EUR">EUR</option>
+                      <option value="USD">USD</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -236,18 +281,34 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
             />
           </div>
 
-          <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)' }}>
+          {/* Recurring weekly option — styled to match form */}
+          <label 
+            htmlFor="isRecurring"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '0.8rem 1rem',
+              borderRadius: '10px',
+              border: `1px solid ${isRecurring ? 'var(--accent-green)' : 'var(--border-color)'}`,
+              backgroundColor: isRecurring ? 'rgba(125, 140, 122, 0.06)' : 'var(--bg-color)',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              userSelect: 'none'
+            }}
+          >
             <input 
               type="checkbox" 
               id="isRecurring"
               checked={isRecurring} 
               onChange={(e) => setIsRecurring(e.target.checked)}
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-green)' }}
             />
-            <label htmlFor="isRecurring" style={{ fontSize: '0.9rem', cursor: 'pointer', fontWeight: 500 }}>
-              Repeat weekly (next 8 weeks)
-            </label>
-          </div>
+            <div>
+              <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>Repeat weekly — 4 weeks</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '1px' }}>Books the same slot for the next 4 weeks</div>
+            </div>
+          </label>
 
           <div className="flex gap-3 justify-end mt-4">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>

@@ -204,7 +204,7 @@ export default function StudentProfile() {
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Price</span>
-              <span style={{ fontWeight: 600 }}>{student.price || '0'} €</span>
+              <span style={{ fontWeight: 600 }}>{student.price || '0'}</span>
             </div>
           </div>
 

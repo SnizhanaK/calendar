@@ -13,6 +13,7 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
   const [name, setName] = useState('');
   const [language, setLanguage] = useState<'Ukrainian' | 'Russian'>('Ukrainian');
   const [price, setPrice] = useState('0');
+  const [currency, setCurrency] = useState<'EUR' | 'USD'>('EUR');
   const [contactInfo, setContactInfo] = useState('');
   const [pinnedNotes, setPinnedNotes] = useState('');
   const [generalNotes, setGeneralNotes] = useState('');
@@ -24,7 +25,10 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
       setName(initialData.name);
       // Ensure existing language maps closely, default to Ukrainian
       setLanguage(initialData.language);
-      setPrice(initialData.price);
+      // Parse price and currency if stored as "25 EUR" or just "25"
+      const priceParts = (initialData.price || '0').split(' ');
+      setPrice(priceParts[0] || '0');
+      setCurrency((priceParts[1] as 'EUR' | 'USD') || 'EUR');
       setContactInfo(initialData.contact_info || '');
       setPinnedNotes(initialData.pinnedNotes || '');
       setGeneralNotes(initialData.general_notes || '');
@@ -34,6 +38,7 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
       setName('');
       setLanguage('Ukrainian');
       setPrice('0');
+      setCurrency('EUR');
       setContactInfo('');
       setPinnedNotes('');
       setGeneralNotes('');
@@ -50,7 +55,7 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
     onSave({
       name: name.trim(),
       language,
-      price: price.trim() || '0',
+      price: `${price.trim() || '0'} ${currency}`,
       contact_info: contactInfo.trim(),
       pinnedNotes: pinnedNotes.trim(),
       goals: goals.trim(),
@@ -142,13 +147,26 @@ export default function StudentFormModal({ isOpen, onClose, onSave, initialData 
           </div>
 
           <div className="input-group">
-            <label className="input-label">Default Price</label>
-            <input 
-              type="number" 
-              className="input-field" 
-              value={price} 
-              onChange={(e) => setPrice(e.target.value)} 
-            />
+            <label className="input-label">Price per lesson</label>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input 
+                type="number"
+                min="0"
+                className="input-field"
+                style={{ flex: 1, minWidth: 0 }}
+                value={price} 
+                onChange={(e) => setPrice(e.target.value)} 
+              />
+              <select
+                className="input-field"
+                style={{ width: '72px', flexShrink: 0, fontWeight: 600 }}
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as 'EUR' | 'USD')}
+              >
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
           </div>
 
           {initialData && (
