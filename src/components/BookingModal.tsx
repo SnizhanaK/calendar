@@ -78,7 +78,7 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
 
     const lessonData = {
       student_id: targetStudentId,
-      lesson_date: new Date(dateStr).toISOString(),
+      lesson_date: dateStr,
       lesson_time: startTime,
       lesson_end_time: endTime,
       lesson_price: mode === 'new' ? newStudentPrice : (students.find(s => s.id === targetStudentId)?.price || '0'),

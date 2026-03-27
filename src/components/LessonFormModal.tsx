@@ -71,7 +71,7 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
     e.preventDefault();
     onSave({
       student_id: studentId,
-      lesson_date: new Date(date).toISOString(),
+      lesson_date: date,
       lesson_time: time,
       lesson_end_time: endTime,
       lesson_price: student?.price || '0', 

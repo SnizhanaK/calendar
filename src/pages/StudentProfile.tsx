@@ -123,7 +123,10 @@ export default function StudentProfile() {
 
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
-  const pastLessons = studentLessons.filter(l => l.lesson_date <= todayStr);
+  const pastLessons = studentLessons.filter(l => {
+    const d = l.lesson_date.length > 10 ? l.lesson_date.split('T')[0] : l.lesson_date;
+    return d <= todayStr;
+  });
   const latestLesson = pastLessons[0];
 
   const handleSaveLesson = (lessonData: Omit<Lesson, 'id' | 'created_at' | 'updated_at'>) => {
