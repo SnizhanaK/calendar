@@ -36,3 +36,12 @@ export interface Lesson {
   created_at: string;
   updated_at: string;
 }
+export interface CalendarNote {
+  id: string;
+  date: string;
+  time: string;
+  endTime?: string;
+  text: string;
+  created_at: string;
+  updated_at: string;
+}

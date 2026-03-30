@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import type { Student, Lesson, CustomField } from '../types';
+import type { Student, Lesson, CustomField, CalendarNote } from '../types';
 
 export interface AppState {
   theme: 'light' | 'dark';
   students: Student[];
   lessons: Lesson[];
   customFields: CustomField[];
+  calendarNotes: CalendarNote[];
   lastBackupAt?: string;
   toggleTheme: () => void;
   setLastBackupAt: (date: string) => void;
@@ -23,6 +24,9 @@ export interface AppState {
   addCustomField: (label: string) => void;
   toggleCustomFieldVisibility: (id: string) => void;
   removeCustomField: (id: string) => void;
+  addCalendarNote: (note: Omit<CalendarNote, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateCalendarNote: (id: string, updates: Partial<CalendarNote>) => void;
+  deleteCalendarNote: (id: string) => void;
 }
 
 const defaultStudents: Student[] = [];
@@ -150,6 +154,23 @@ export const useStore = create<AppState>()(
       removeCustomField: (id) => set((state) => ({
         customFields: state.customFields.filter((field) => field.id !== id)
       })),
+      calendarNotes: [],
+      addCalendarNote: (noteData) => set((state) => ({
+        calendarNotes: [...state.calendarNotes, {
+          ...noteData,
+          id: uuidv4(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }]
+      })),
+      updateCalendarNote: (id, updates) => set((state) => ({
+        calendarNotes: state.calendarNotes.map((n) => 
+          n.id === id ? { ...n, ...updates, updated_at: new Date().toISOString() } : n
+        )
+      })),
+      deleteCalendarNote: (id) => set((state) => ({
+        calendarNotes: state.calendarNotes.filter((n) => n.id !== id)
+      })),
     }),
     {
       name: 'crm-storage',
@@ -160,6 +181,7 @@ export const useStore = create<AppState>()(
           theme: s.theme ?? ('light' as const),
           students: s.students ?? [],
           lessons: s.lessons ?? [],
+          calendarNotes: s.calendarNotes ?? [],
           customFields: s.customFields ?? [],
           lastBackupAt: s.lastBackupAt ?? undefined,
         };

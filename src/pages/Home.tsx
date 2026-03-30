@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { Search, List, Calendar as CalendarIcon, Clock, ChevronRight, Edit2 } from 'lucide-react';
+import { Search, Clock, ChevronRight, Edit2, Users } from 'lucide-react';
 import WeeklyCalendar from '../components/WeeklyCalendar';
 import LessonFormModal from '../components/LessonFormModal';
 import type { Lesson } from '../types';
@@ -11,7 +11,6 @@ export default function Home() {
   const { students, lessons, editLesson } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'Active' | 'Inactive'>('Active');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
@@ -33,99 +32,35 @@ export default function Home() {
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || 'Unknown';
 
   return (
-    <div>
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex justify-between items-center" style={{ paddingBottom: '0.5rem' }}>
-          <div className="flex gap-4">
-            <button 
-              className={`btn-ghost ${filterStatus === 'Active' ? 'text-main' : 'text-muted'}`}
-              style={{ 
-                padding: '0.25rem 0',
-                borderBottom: filterStatus === 'Active' ? '2px solid var(--accent-green)' : '2px solid transparent',
-                borderRadius: '0',
-                fontWeight: filterStatus === 'Active' ? 600 : 400 
-              }}
-              onClick={() => setFilterStatus('Active')}
-            >
-              Active
-            </button>
-            <button 
-              className={`btn-ghost ${filterStatus === 'Inactive' ? 'text-main' : 'text-muted'}`}
-              style={{ 
-                padding: '0.25rem 0',
-                borderBottom: filterStatus === 'Inactive' ? '2px solid var(--accent-green)' : '2px solid transparent',
-                borderRadius: '0',
-                fontWeight: filterStatus === 'Inactive' ? 600 : 400 
-              }}
-              onClick={() => setFilterStatus('Inactive')}
-            >
-              Inactive
-            </button>
-          </div>
-
-          <div className="flex bg-card p-1 rounded-lg" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
-            <button 
-              className="btn-icon" 
-              style={{ backgroundColor: viewMode === 'list' ? 'var(--bg-color)' : 'transparent', borderRadius: '6px' }}
-              onClick={() => setViewMode('list')}
-              title="List View"
-            >
-              <List size={18} />
-            </button>
-            <button 
-              className="btn-icon" 
-              style={{ backgroundColor: viewMode === 'calendar' ? 'var(--bg-color)' : 'transparent', borderRadius: '6px' }}
-              onClick={() => setViewMode('calendar')}
-              title="Calendar View"
-            >
-              <CalendarIcon size={18} />
-            </button>
-          </div>
-        </div>
-
-        {viewMode === 'list' && (
-          <div className="flex items-center" style={{ position: 'relative' }}>
-            <Search size={18} className="text-muted" style={{ position: 'absolute', left: '12px' }} />
-            <input 
-              type="text" 
-              placeholder="Search students..." 
-              className="input-field" 
-              style={{ paddingLeft: '2.5rem' }}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        )}
-      </div>
-
-      {viewMode === 'list' && (
-        <div className="mb-8">
+    <div className="dashboard-container">
+      {/* Sidebar: Lessons & Students */}
+      <div className="dashboard-sidebar">
+        {/* Today's Lessons Section */}
+        <section className="mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <Clock size={20} className="text-secondary" />
-            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Today's Lessons</h2>
+            <Clock size={18} className="text-secondary" />
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Today's Lessons</h3>
           </div>
           
-          {todayLessons.length === 0 ? (
-            <div className="card py-8 text-center" style={{ border: '1px dashed var(--border-color)', backgroundColor: 'transparent' }}>
-              <p className="text-muted" style={{ margin: 0 }}>No lessons scheduled for today.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-              {todayLessons.map(lesson => (
+          <div className="flex flex-col gap-2">
+            {todayLessons.length === 0 ? (
+              <div className="p-4 text-center border-dashed" style={{ border: '1px dashed var(--border-color)', borderRadius: '8px' }}>
+                <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>No lessons today.</p>
+              </div>
+            ) : (
+              todayLessons.map(lesson => (
                 <div 
                   key={lesson.id} 
                   className="card group relative"
                   style={{ 
-                    padding: '1rem', 
+                    padding: '0.75rem', 
                     display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '0.25rem',
+                    flexDirection: 'column',
                     borderLeft: '4px solid var(--accent-green)',
-                    cursor: 'default'
                   }}
                 >
                   <div className="flex justify-between items-start">
-                    <span style={{ fontWeight: 700, color: 'var(--accent-green)', fontSize: '1.1rem' }}>{lesson.lesson_time}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--accent-green)', fontSize: '0.9rem' }}>{lesson.lesson_time}</span>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         className="btn-icon" 
@@ -133,67 +68,131 @@ export default function Home() {
                           setEditingLesson(lesson);
                           setIsEditOpen(true);
                         }}
-                        style={{ padding: '2px', width: '24px', height: '24px' }}
+                        style={{ padding: '2px', width: '20px', height: '20px' }}
                       >
-                        <Edit2 size={12} />
+                        <Edit2 size={10} />
                       </button>
                       <button 
                         className="btn-icon"
                         onClick={() => navigate(`/student/${lesson.student_id}`)}
-                        style={{ padding: '2px', width: '24px', height: '24px' }}
+                        style={{ padding: '2px', width: '20px', height: '20px' }}
                       >
-                        <ChevronRight size={14} />
+                        <ChevronRight size={12} />
                       </button>
                     </div>
                   </div>
-                  <span style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {getStudentName(lesson.student_id)}
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              ))
+            )}
+          </div>
+        </section>
 
-      {viewMode === 'calendar' ? (
-        <WeeklyCalendar />
-      ) : (
-        <div className="flex flex-col gap-3">
-          {filteredStudents.length === 0 ? (
-            <div className="card py-12 text-center" style={{ padding: '3rem', border: '1px dashed var(--border-color)', backgroundColor: 'transparent' }}>
-              <Search size={48} className="text-muted mb-4 mx-auto opacity-20" />
-              <h3 style={{ margin: '0 0 0.5rem', color: 'var(--text-main)' }}>No students found</h3>
-              <p className="text-muted" style={{ margin: 0 }}>Try adjusting your search or filter to find who you're looking for.</p>
+        {/* Students List Section */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users size={18} className="text-muted" />
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Students</h3>
             </div>
-          ) : (
-            filteredStudents.map(student => (
-              <div 
-                key={student.id}
-                className="card card-hoverable flex justify-between items-center"
-                style={{ 
-                  cursor: 'pointer', 
-                  padding: '1.25rem 1.75rem',
-                  borderLeft: '4px solid var(--accent-green)'
-                }}
-                onClick={() => navigate(`/student/${student.id}`)}
+            <div className="flex bg-card p-0.5 rounded" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+              <button 
+                className={`px-2 py-0.5 text-[0.7rem] rounded ${filterStatus === 'Active' ? 'bg-accent text-white' : 'text-muted'}`}
+                style={{ backgroundColor: filterStatus === 'Active' ? 'var(--accent-green)' : 'transparent' }}
+                onClick={() => setFilterStatus('Active')}
               >
-                <div className="flex flex-col gap-1">
-                  <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>{student.name}</span>
-                  <span className="text-muted" style={{ fontSize: '0.85rem' }}>{student.contact_info || 'No contact info'}</span>
-                </div>
-                <div className="text-right flex items-center gap-4">
-                  <div className="text-right">
-                    <span className="text-muted" style={{ fontSize: '0.85rem', display: 'block', marginBottom: '2px' }}>Language</span>
-                    <span style={{ fontWeight: 500 }}>{student.language}</span>
+                Active
+              </button>
+              <button 
+                className={`px-2 py-0.5 text-[0.7rem] rounded ${filterStatus === 'Inactive' ? 'bg-accent text-white' : 'text-muted'}`}
+                style={{ backgroundColor: filterStatus === 'Inactive' ? 'var(--accent-green)' : 'transparent' }}
+                onClick={() => setFilterStatus('Inactive')}
+              >
+                Inactive
+              </button>
+            </div>
+          </div>
+
+          <div style={{ position: 'relative', marginBottom: '1rem' }}>
+            <Search size={14} className="text-muted" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              className="input-field" 
+              style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+            {filteredStudents.length === 0 ? (
+              <p className="text-muted text-center py-4" style={{ fontSize: '0.85rem' }}>No students found.</p>
+            ) : (
+              filteredStudents.map(student => (
+                <div 
+                  key={student.id}
+                  className="card card-hoverable flex justify-between items-center"
+                  style={{ 
+                    cursor: 'pointer', 
+                    padding: '0.75rem 1rem',
+                    borderLeft: '3px solid var(--accent-green)'
+                  }}
+                  onClick={() => navigate(`/student/${student.id}`)}
+                >
+                  <div className="flex flex-col">
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{student.name}</span>
+                    <span className="text-muted" style={{ fontSize: '0.75rem' }}>{student.language}</span>
                   </div>
-                  <ChevronRight size={18} className="text-muted" />
+                  <ChevronRight size={14} className="text-muted" />
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Main Content: Weekly Calendar */}
+      <div className="dashboard-main">
+        <WeeklyCalendar />
+      </div>
+
+      <style>{`
+        .dashboard-container {
+          display: flex;
+          gap: 1.5rem;
+          align-items: flex-start;
+        }
+        .dashboard-sidebar {
+          width: 320px;
+          flex-shrink: 0;
+          position: sticky;
+          top: 1.5rem;
+        }
+        .dashboard-main {
+          flex: 1;
+          min-width: 0;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: var(--border-color);
+          border-radius: 4px;
+        }
+        @media (max-width: 1024px) {
+          .dashboard-container {
+            flex-direction: column;
+          }
+          .dashboard-sidebar {
+            width: 100%;
+            position: relative;
+            top: 0;
+          }
+        }
+      `}</style>
 
       {isEditOpen && editingLesson && (
         <LessonFormModal 

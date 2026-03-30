@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { startOfWeek, addDays, format, isSameDay, addWeeks, subWeeks } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Plus, StickyNote } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import type { Lesson } from '../types';
+import type { Lesson, CalendarNote } from '../types';
 import BookingModal from './BookingModal';
 import LessonFormModal from './LessonFormModal';
 
@@ -26,7 +26,15 @@ function minutesToTop(totalMin: number, startMin: number) {
 
 export default function WeeklyCalendar() {
   const navigate = useNavigate();
-  const { lessons, students } = useStore();
+  const { 
+    lessons, 
+    students, 
+    calendarNotes, 
+    addCalendarNote, 
+    updateCalendarNote, 
+    deleteCalendarNote, 
+    deleteLesson 
+  } = useStore();
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -35,8 +43,14 @@ export default function WeeklyCalendar() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<CalendarNote | null>(null);
+  const [slotForNote, setSlotForNote] = useState<{ day: Date; hour: number; minute: number } | null>(null);
+  const [isChoiceOpen, setIsChoiceOpen] = useState(false);
+
   const [confirmMove, setConfirmMove] = useState<{ lesson: Lesson; newDate: string; newTime: string } | null>(null);
   const [draggedLessonId, setDraggedLessonId] = useState<string | null>(null);
+  const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
 
   const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
 
@@ -128,32 +142,55 @@ export default function WeeklyCalendar() {
   }, [ptFormatter, uaFormatter]);
 
   const handleSlotClick = useCallback((day: Date, hour: number, minute: number) => {
-    setBookingSlot({ day, hour, minute });
-    setIsBookingOpen(true);
+    setSlotForNote({ day, hour, minute });
+    setIsChoiceOpen(true);
   }, []);
 
-  const onDragStart = (e: React.DragEvent, lessonId: string) => {
-    e.dataTransfer.setData('lessonId', lessonId);
-    setDraggedLessonId(lessonId);
+  const handleCreateLesson = () => {
+    setIsChoiceOpen(false);
+    if (slotForNote) {
+      setBookingSlot(slotForNote);
+      setIsBookingOpen(true);
+    }
+  };
+
+  const handleCreateNote = () => {
+    setIsChoiceOpen(false);
+    setEditingNote(null);
+    setIsNoteModalOpen(true);
+  };
+
+  const onDragStart = (e: React.DragEvent, id: string, type: 'lesson' | 'note') => {
+    e.dataTransfer.setData('id', id);
+    e.dataTransfer.setData('type', type);
+    if (type === 'lesson') setDraggedLessonId(id);
+    else setDraggedNoteId(id);
   };
 
   const onDrop = (e: React.DragEvent, day: Date, hour: number, minute: number) => {
     e.preventDefault();
     setDraggedLessonId(null);
-    const lessonId = e.dataTransfer.getData('lessonId');
-    const lesson = lessons.find(l => l.id === lessonId);
-    if (!lesson) return;
+    setDraggedNoteId(null);
+    const id = e.dataTransfer.getData('id');
+    const type = e.dataTransfer.getData('type');
 
     const newDate = day.toISOString().split('T')[0];
     const newTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 
-    // Don't move if same slot
-    if (lesson.lesson_date === newDate && lesson.lesson_time === newTime) return;
-
-    if (lesson.isRecurring && lesson.recurringId) {
-      setConfirmMove({ lesson, newDate, newTime });
+    if (type === 'lesson') {
+      const lesson = lessons.find(l => l.id === id);
+      if (!lesson) return;
+      if (lesson.lesson_date === newDate && lesson.lesson_time === newTime) return;
+      if (lesson.isRecurring && lesson.recurringId) {
+        setConfirmMove({ lesson, newDate, newTime });
+      } else {
+        useStore.getState().editLesson(lesson.id, { lesson_date: newDate, lesson_time: newTime });
+      }
     } else {
-      useStore.getState().editLesson(lesson.id, { lesson_date: newDate, lesson_time: newTime });
+      const note = calendarNotes.find(n => n.id === id);
+      if (!note) return;
+      if (note.date === newDate && note.time === newTime) return;
+      updateCalendarNote(id, { date: newDate, time: newTime });
     }
   };
 
@@ -162,6 +199,12 @@ export default function WeeklyCalendar() {
     const { lesson, newDate, newTime } = confirmMove;
     useStore.getState().editLesson(lesson.id, { lesson_date: newDate, lesson_time: newTime }, updateSeries);
     setConfirmMove(null);
+  };
+
+  const handleDeleteLesson = (id: string) => {
+    if (window.confirm('Delete this lesson?')) {
+      deleteLesson(id);
+    }
   };
 
   return (
@@ -271,6 +314,58 @@ export default function WeeklyCalendar() {
                     />
                   ))}
 
+                  {/* Calendar notes rendering */}
+                  {calendarNotes
+                    .filter(n => n.date === day.toISOString().split('T')[0])
+                    .map(note => {
+                      const startMins = getMinutes(note.time);
+                      const top = minutesToTop(startMins, visibleStartMin);
+                      return (
+                        <div
+                          key={note.id}
+                          draggable
+                          onDragStart={e => onDragStart(e, note.id, 'note')}
+                          style={{
+                            position: 'absolute',
+                            top: `${top}px`,
+                            height: '40px',
+                            left: '2px',
+                            right: '2px',
+                            backgroundColor: 'rgba(234, 179, 8, 0.08)',
+                            border: '1px dashed var(--secondary-color)',
+                            borderLeft: '3px solid var(--secondary-color)',
+                            padding: '3px 6px',
+                            borderRadius: '4px',
+                            fontSize: '0.7rem',
+                            cursor: 'grab',
+                            color: 'var(--text-main)',
+                            zIndex: 11,
+                            opacity: draggedNoteId === note.id ? 0.4 : 1,
+                            transition: 'opacity 0.2s',
+                          }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            setEditingNote(note);
+                            setIsNoteModalOpen(true);
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                            <span>{note.time}</span>
+                            <button
+                              onClick={e => { e.stopPropagation(); deleteCalendarNote(note.id); }}
+                              style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-muted)', cursor: 'pointer' }}
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          </div>
+                          <div style={{ fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {note.text}
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+
                   {/* Lesson event blocks */}
                   {groups.map(group =>
                     group.map((lesson, idx) => {
@@ -286,7 +381,7 @@ export default function WeeklyCalendar() {
                         <div
                           key={lesson.id}
                           draggable
-                          onDragStart={e => onDragStart(e, lesson.id)}
+                          onDragStart={e => onDragStart(e, lesson.id, 'lesson')}
                           style={{
                             position: 'absolute',
                             top: `${top}px`,
@@ -310,11 +405,24 @@ export default function WeeklyCalendar() {
                           onClick={() => navigate(`/student/${student?.id}`)}
                           title={`${student?.name} — drag to move, click to open profile`}
                         >
-                          <strong style={{ display: 'block', lineHeight: 1.3 }}>
-                            {lesson.lesson_time}
-                            {lesson.lesson_end_time ? `–${lesson.lesson_end_time}` : ''}
-                          </strong>
-                          <div style={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: 1.3 }}>
+                          <div className="flex justify-between items-start" style={{ lineHeight: 1 }}>
+                            <strong style={{ lineHeight: 1.3 }}>
+                              {lesson.lesson_time}
+                            </strong>
+                            <div className="flex gap-1">
+                              <button
+                                className="calendar-action-btn"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleDeleteLesson(lesson.id);
+                                }}
+                                title="Delete Lesson"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+                          </div>
+                          <div style={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: 1.3, marginTop: '2px' }}>
                             {student?.name || 'Unknown'}
                           </div>
                           {/* Edit pencil */}
@@ -349,7 +457,83 @@ export default function WeeklyCalendar() {
 
       <style>{`
         .calendar-slot:hover { background-color: rgba(125,140,122,0.06) !important; }
+        .calendar-action-btn {
+          border: none;
+          background: none;
+          padding: 2px;
+          color: var(--text-muted);
+          border-radius: 4px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0.6;
+          transition: all 0.2s;
+        }
+        .calendar-action-btn:hover {
+          background-color: rgba(0,0,0,0.05);
+          color: #ef4444;
+          opacity: 1;
+        }
       `}</style>
+
+      {/* Choice Modal: Lesson vs Note */}
+      {isChoiceOpen && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }}>
+          <div className="card animate-scale-in" style={{ padding: '1rem', width: '220px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <button className="btn btn-primary flex gap-2 justify-center" onClick={handleCreateLesson}>
+              <Plus size={16} /> Add Lesson
+            </button>
+            <button className="btn btn-ghost flex gap-2 justify-center" onClick={handleCreateNote}>
+              <StickyNote size={16} /> Add Note
+            </button>
+            <button className="btn text-muted" style={{ fontSize: '0.75rem' }} onClick={() => setIsChoiceOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Simple Note Modal */}
+      {isNoteModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120, backdropFilter: 'blur(4px)' }}>
+          <div className="card animate-slide-up" style={{ width: '320px' }}>
+            <h3 className="mb-4">{editingNote ? 'Edit Note' : 'Add Note'}</h3>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-muted mb-1" style={{ fontSize: '0.75rem' }}>Text</label>
+                <input
+                  autoFocus
+                  className="input-field"
+                  placeholder="e.g. Free hour, Break..."
+                  defaultValue={editingNote?.text || ''}
+                  id="note-text-input"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="btn btn-primary flex-1"
+                  onClick={() => {
+                    const text = (document.getElementById('note-text-input') as HTMLInputElement).value;
+                    if (!text) return;
+                    if (editingNote) {
+                      updateCalendarNote(editingNote.id, { text });
+                    } else if (slotForNote) {
+                      addCalendarNote({
+                        text,
+                        date: slotForNote.day.toISOString().split('T')[0],
+                        time: `${slotForNote.hour.toString().padStart(2, '0')}:${slotForNote.minute.toString().padStart(2, '0')}`
+                      });
+                    }
+                    setIsNoteModalOpen(false);
+                  }}
+                >
+                  Save
+                </button>
+                <button className="btn btn-ghost" onClick={() => setIsNoteModalOpen(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isBookingOpen && bookingSlot && (
         <BookingModal
