@@ -33,15 +33,15 @@ export default function Home() {
       {/* Sidebar: Lessons & Students */}
       <div className="dashboard-sidebar">
         {/* Today's Lessons Section */}
-        <section className="mb-12">
-          <div className="flex items-center gap-2 mb-6">
+        <section className="mb-20">
+          <div className="flex items-center gap-2 mb-8">
             <Clock size={18} className="text-secondary" />
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Today's Lessons</h3>
           </div>
           
           <div className="flex flex-col gap-2">
             {todayLessons.length === 0 ? (
-              <div className="text-center border-dashed" style={{ padding: '2.5rem 1rem', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
+              <div className="text-center border-dashed" style={{ padding: '4rem 1rem 5rem', border: '1px dashed var(--border-color)', borderRadius: '16px' }}>
                 <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>No lessons today.</p>
               </div>
             ) : (
