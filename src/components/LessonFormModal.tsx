@@ -16,8 +16,8 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
   const student = students.find(s => s.id === studentId);
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [time, setTime] = useState('12:00');
-  const [endTime, setEndTime] = useState('12:50');
+  const [time, setTime] = useState('16:00');
+  const [endTime, setEndTime] = useState('16:50');
   const [slide, setSlide] = useState('');
   const [notes, setNotes] = useState('');
   const [homework, setHomework] = useState('');
@@ -130,11 +130,11 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
                 }}
                 style={{ fontWeight: 600 }}
               >
-                {Array.from({ length: 13 }).map((_, i) => {
+                {Array.from({ length: 15 }).map((_, i) => {
                   const totalMins = i * 30;
                   const h = 16 + Math.floor(totalMins / 60);
                   const m = totalMins % 60;
-                  if (h > 22 || (h === 22 && m > 0)) return null;
+                  if (h > 23 || (h === 23 && m > 0)) return null;
                   const val = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
                   return <option key={val} value={val}>{val}</option>;
                 }).filter(Boolean)}

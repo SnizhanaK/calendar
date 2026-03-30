@@ -8,12 +8,12 @@ import BookingModal from './BookingModal';
 import LessonFormModal from './LessonFormModal';
 
 // Pixel height per minute – controls total calendar height
-const PX_PER_MIN = 1.2; // 60 min slot = 72px  (was 2px = 120px)
+const PX_PER_MIN = 1.2; // 60 min slot = 72px
 const SLOT_HEIGHT = 30 * PX_PER_MIN; // 30-min slot
 
-// Default visible range: 11:00 – 21:00.  Shrinks/grows based on actual lessons.
+// Default visible range: 16:00 – 23:00 Georgian time.
 const DEFAULT_START_HOUR = 16;
-const DEFAULT_END_HOUR = 22;
+const DEFAULT_END_HOUR = 23;
 
 function getMinutes(timeStr: string) {
   const [h, m] = timeStr.split(':').map(Number);
@@ -42,14 +42,11 @@ export default function WeeklyCalendar() {
   [startDate]);
 
   // ── Dynamic range ──────────────────────────────────────────────────────────
-  // Compute visible hour range based on this week's lessons so the calendar is
-  // never taller than necessary.
   const { visibleStartMin, visibleEndMin } = useMemo(() => {
     const weekLessons = lessons.filter(l =>
       l.lesson_date && weekDays.some(day => isSameDay(new Date(l.lesson_date), day))
     );
 
-    // Fixed start at 16:00. End can expand if a lesson goes past 22:00.
     const fixedStart = DEFAULT_START_HOUR * 60;
     const fixedEnd   = DEFAULT_END_HOUR * 60;
 
@@ -70,7 +67,6 @@ export default function WeeklyCalendar() {
     };
   }, [lessons, weekDays]);
 
-  // Generate 30-minute slots within the visible range
   const timeSlots = useMemo(() => {
     const slots: { hour: number; minute: number }[] = [];
     for (let min = visibleStartMin; min < visibleEndMin; min += 30) {
@@ -95,7 +91,6 @@ export default function WeeklyCalendar() {
         return getMinutes(l.lesson_time) + 50;
       };
 
-      // Group overlapping lessons side-by-side
       const groups: Lesson[][] = [];
       sorted.forEach(lesson => {
         let placed = false;
@@ -114,7 +109,7 @@ export default function WeeklyCalendar() {
     });
   }, [lessons, weekDays]);
 
-  // ── Timezone helpers (computed once per render, not per cell) ─────────────
+  // ── Timezone helpers ──────────────────────────────────────────────────────
   const ptFormatter = useMemo(() => new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit'
   }), []);
@@ -153,23 +148,27 @@ export default function WeeklyCalendar() {
         <div style={{ minWidth: '720px' }}>
           {/* Day headers */}
           <div style={{ display: 'grid', gridTemplateColumns: '72px repeat(7, 1fr)', backgroundColor: 'var(--card-bg)', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ padding: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '1px' }}>
-              <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>GE</span>
-              <span>PT · UA</span>
+            <div style={{ padding: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.8rem' }}>GE</span>
             </div>
             {weekDays.map(day => {
               const isToday = isSameDay(day, new Date());
+              const tz = getTzLabel(day, DEFAULT_START_HOUR, 0);
               return (
-                <div key={day.toISOString()} style={{ padding: '0.5rem 0', textAlign: 'center', fontWeight: 500, fontSize: '0.82rem' }}>
-                  <div className="text-muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{format(day, 'EEE')}</div>
+                <div key={day.toISOString()} style={{ padding: '0.4rem 0', textAlign: 'center', fontWeight: 500, borderLeft: '1px solid var(--border-color)' }}>
+                  <div className="text-muted" style={{ fontSize: '0.65rem', textTransform: 'uppercase', lineHeight: 1 }}>{format(day, 'EEE')}</div>
                   <div style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    width: '26px', height: '26px', borderRadius: '50%', margin: '2px auto 0',
+                    width: '24px', height: '24px', borderRadius: '50%', margin: '1px auto',
                     backgroundColor: isToday ? 'var(--accent-green)' : 'transparent',
                     color: isToday ? '#fff' : 'inherit',
                     fontWeight: isToday ? 700 : 500,
+                    fontSize: '0.85rem'
                   }}>
                     {format(day, 'd')}
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '0.6rem', marginTop: '1px', opacity: 0.8 }}>
+                    {tz.portugal} · {tz.ukraine}
                   </div>
                 </div>
               );
@@ -180,41 +179,30 @@ export default function WeeklyCalendar() {
           <div style={{ display: 'flex', position: 'relative', borderLeft: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
             {/* Time axis */}
             <div style={{ width: '72px', flexShrink: 0 }}>
-              {timeSlots.map(({ hour, minute }) => {
-                const tz = minute === 0 ? getTzLabel(weekDays[0], hour, minute) : null;
-                return (
-                  <div
-                    key={`${hour}:${minute}`}
-                    style={{
-                      height: `${SLOT_HEIGHT}px`,
-                      backgroundColor: 'var(--bg-color)',
-                      padding: '3px 6px',
-                      fontSize: '0.68rem',
-                      borderBottom: '1px solid var(--border-color)',
-                      borderRight: '1px solid var(--border-color)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'flex-start',
-                      gap: '1px',
-                    }}
-                  >
-                    {minute === 0 ? (
-                      <>
-                        <span style={{ fontWeight: 600, color: 'var(--text-main)', lineHeight: 1.2 }}>
-                          {hour.toString().padStart(2, '0')}:00
-                        </span>
-                        {tz && (
-                          <span className="text-muted" style={{ fontSize: '0.62rem', lineHeight: 1.2 }}>
-                            {tz.portugal} · {tz.ukraine}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-muted" style={{ fontSize: '0.6rem', opacity: 0.4 }}>:30</span>
-                    )}
-                  </div>
-                );
-              })}
+              {timeSlots.map(({ hour, minute }) => (
+                <div
+                  key={`${hour}:${minute}`}
+                  style={{
+                    height: `${SLOT_HEIGHT}px`,
+                    backgroundColor: 'var(--bg-color)',
+                    padding: '4px 6px',
+                    fontSize: '0.75rem',
+                    borderBottom: '1px solid var(--border-color)',
+                    borderRight: '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {minute === 0 ? (
+                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                      {hour.toString().padStart(2, '0')}:00
+                    </span>
+                  ) : (
+                    <span className="text-muted" style={{ fontSize: '0.65rem', opacity: 0.3 }}>:30</span>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* Day columns */}
