@@ -140,13 +140,16 @@ export const useStore = create<AppState>()(
     {
       name: 'crm-storage',
       version: 2,
-      migrate: () => ({
-        theme: 'light' as const,
-        students: [],
-        lessons: [],
-        customFields: [],
-        lastBackupAt: undefined,
-      }),
+      migrate: (persistedState: unknown) => {
+        const s = (persistedState as Partial<AppState>) || {};
+        return {
+          theme: s.theme ?? ('light' as const),
+          students: s.students ?? [],
+          lessons: s.lessons ?? [],
+          customFields: s.customFields ?? [],
+          lastBackupAt: s.lastBackupAt ?? undefined,
+        };
+      },
     }
   )
 );

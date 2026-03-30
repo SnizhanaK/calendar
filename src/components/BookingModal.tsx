@@ -16,7 +16,7 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
   
   // Existing student state
   const activeStudents = students.filter(s => s.status === 'Active');
-  const [selectedStudentId, setSelectedStudentId] = useState(activeStudents[0]?.id || '');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
   
   // New student state
   const [newStudentName, setNewStudentName] = useState('');
@@ -45,13 +45,23 @@ export default function BookingModal({ isOpen, onClose, prefilledSlot }: Booking
   const [note, setNote] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
 
-  // Update default selected student if active list changes
+  // Reset form state every time the modal opens
   useEffect(() => {
-    if (activeStudents.length > 0 && !selectedStudentId) {
+    if (!isOpen) return;
+    if (activeStudents.length > 0) {
+      setMode('existing');
       setSelectedStudentId(activeStudents[0].id);
+    } else {
+      setMode('new');
+      setSelectedStudentId('');
     }
-    if (activeStudents.length === 0) setMode('new');
-  }, [activeStudents, selectedStudentId]);
+    setNote('');
+    setIsRecurring(false);
+    const initialT = `${prefilledSlot.hour.toString().padStart(2, '0')}:${prefilledSlot.minute.toString().padStart(2, '0')}`;
+    setStartTime(initialT);
+    setEndTime(addMinutesToTime(initialT, 50));
+    setDateStr(format(prefilledSlot.day, 'yyyy-MM-dd'));
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

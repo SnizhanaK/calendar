@@ -211,8 +211,14 @@ export default function StudentProfile() {
             </div>
           </div>
 
-          {(student.goals || student.general_notes) && (
+          {(student.pinnedNotes || student.goals || student.general_notes) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+              {student.pinnedNotes && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📌 Pinned Info</span>
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', fontSize: '0.9rem' }}>{student.pinnedNotes}</div>
+                </div>
+              )}
               {student.goals && (
                 <div className="flex flex-col gap-1">
                   <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Learning Goals</span>

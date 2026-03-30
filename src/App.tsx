@@ -25,9 +25,11 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  window.__showUndoToast = (toastData: ToastState) => {
-    setToast(toastData);
-  };
+  useEffect(() => {
+    window.__showUndoToast = (toastData: ToastState) => {
+      setToast(toastData);
+    };
+  }, []);
 
   useEffect(() => {
     if (theme === 'dark') {

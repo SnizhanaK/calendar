@@ -23,7 +23,12 @@ export default function Home() {
   });
 
   const today = new Date().toISOString().split('T')[0];
-  const todayLessons = lessons.filter(l => l.lesson_date === today).sort((a,b) => a.lesson_time.localeCompare(b.lesson_time));
+  const todayLessons = lessons
+    .filter(l => {
+      const d = l.lesson_date.length > 10 ? l.lesson_date.split('T')[0] : l.lesson_date;
+      return d === today;
+    })
+    .sort((a, b) => a.lesson_time.localeCompare(b.lesson_time));
 
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || 'Unknown';
 
