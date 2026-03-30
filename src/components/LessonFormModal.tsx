@@ -130,11 +130,11 @@ export default function LessonFormModal({ isOpen, onClose, onSave, studentId, in
                 }}
                 style={{ fontWeight: 600 }}
               >
-                {Array.from({ length: 21 }).map((_, i) => {
+                {Array.from({ length: 13 }).map((_, i) => {
                   const totalMins = i * 30;
-                  const h = 11 + Math.floor(totalMins / 60);
+                  const h = 16 + Math.floor(totalMins / 60);
                   const m = totalMins % 60;
-                  if (h > 21 || (h === 21 && m > 0)) return null;
+                  if (h > 22 || (h === 22 && m > 0)) return null;
                   const val = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
                   return <option key={val} value={val}>{val}</option>;
                 }).filter(Boolean)}

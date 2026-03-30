@@ -12,8 +12,8 @@ const PX_PER_MIN = 1.2; // 60 min slot = 72px  (was 2px = 120px)
 const SLOT_HEIGHT = 30 * PX_PER_MIN; // 30-min slot
 
 // Default visible range: 11:00 – 21:00.  Shrinks/grows based on actual lessons.
-const DEFAULT_START_HOUR = 11;
-const DEFAULT_END_HOUR = 21;
+const DEFAULT_START_HOUR = 16;
+const DEFAULT_END_HOUR = 22;
 
 function getMinutes(timeStr: string) {
   const [h, m] = timeStr.split(':').map(Number);
@@ -49,11 +49,12 @@ export default function WeeklyCalendar() {
       l.lesson_date && weekDays.some(day => isSameDay(new Date(l.lesson_date), day))
     );
 
+    // Fixed start at 16:00. End can expand if a lesson goes past 22:00.
+    const fixedStart = DEFAULT_START_HOUR * 60;
+    const fixedEnd   = DEFAULT_END_HOUR * 60;
+
     if (weekLessons.length === 0) {
-      return {
-        visibleStartMin: DEFAULT_START_HOUR * 60,
-        visibleEndMin: DEFAULT_END_HOUR * 60,
-      };
+      return { visibleStartMin: fixedStart, visibleEndMin: fixedEnd };
     }
 
     const getEndMins = (l: Lesson) => {
@@ -61,12 +62,11 @@ export default function WeeklyCalendar() {
       return getMinutes(l.lesson_time) + 50;
     };
 
-    const earliest = Math.min(...weekLessons.map(l => getMinutes(l.lesson_time)));
-    const latest   = Math.max(...weekLessons.map(getEndMins));
+    const latest = Math.max(...weekLessons.map(getEndMins));
 
     return {
-      visibleStartMin: Math.min(earliest - 30, DEFAULT_START_HOUR * 60), // 30-min buffer before
-      visibleEndMin:   Math.max(latest + 30, DEFAULT_END_HOUR * 60),     // 30-min buffer after
+      visibleStartMin: fixedStart,
+      visibleEndMin:   Math.max(latest + 30, fixedEnd),
     };
   }, [lessons, weekDays]);
 
