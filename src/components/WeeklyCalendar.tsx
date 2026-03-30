@@ -35,6 +35,9 @@ export default function WeeklyCalendar() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
+  const [confirmMove, setConfirmMove] = useState<{ lesson: Lesson; newDate: string; newTime: string } | null>(null);
+  const [draggedLessonId, setDraggedLessonId] = useState<string | null>(null);
+
   const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
 
   const weekDays = useMemo(() =>
@@ -128,6 +131,38 @@ export default function WeeklyCalendar() {
     setBookingSlot({ day, hour, minute });
     setIsBookingOpen(true);
   }, []);
+
+  const onDragStart = (e: React.DragEvent, lessonId: string) => {
+    e.dataTransfer.setData('lessonId', lessonId);
+    setDraggedLessonId(lessonId);
+  };
+
+  const onDrop = (e: React.DragEvent, day: Date, hour: number, minute: number) => {
+    e.preventDefault();
+    setDraggedLessonId(null);
+    const lessonId = e.dataTransfer.getData('lessonId');
+    const lesson = lessons.find(l => l.id === lessonId);
+    if (!lesson) return;
+
+    const newDate = day.toISOString().split('T')[0];
+    const newTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+
+    // Don't move if same slot
+    if (lesson.lesson_date === newDate && lesson.lesson_time === newTime) return;
+
+    if (lesson.isRecurring && lesson.recurringId) {
+      setConfirmMove({ lesson, newDate, newTime });
+    } else {
+      useStore.getState().editLesson(lesson.id, { lesson_date: newDate, lesson_time: newTime });
+    }
+  };
+
+  const executeMove = (updateSeries: boolean) => {
+    if (!confirmMove) return;
+    const { lesson, newDate, newTime } = confirmMove;
+    useStore.getState().editLesson(lesson.id, { lesson_date: newDate, lesson_time: newTime }, updateSeries);
+    setConfirmMove(null);
+  };
 
   return (
     <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
@@ -231,6 +266,8 @@ export default function WeeklyCalendar() {
                         borderBottom: `1px ${minute === 0 ? 'dashed' : 'solid'} var(--border-color)`,
                       }}
                       onClick={() => handleSlotClick(day, hour, minute)}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => onDrop(e, day, hour, minute)}
                     />
                   ))}
 
@@ -248,6 +285,8 @@ export default function WeeklyCalendar() {
                       return (
                         <div
                           key={lesson.id}
+                          draggable
+                          onDragStart={e => onDragStart(e, lesson.id)}
                           style={{
                             position: 'absolute',
                             top: `${top}px`,
@@ -259,14 +298,17 @@ export default function WeeklyCalendar() {
                             padding: '3px 5px',
                             borderRadius: '3px',
                             fontSize: '0.72rem',
-                            cursor: 'pointer',
+                            cursor: 'grab',
                             color: 'var(--text-main)',
                             overflow: 'hidden',
                             zIndex: 10,
                             boxSizing: 'border-box',
+                            opacity: draggedLessonId === lesson.id ? 0.4 : 1,
+                            transform: draggedLessonId === lesson.id ? 'scale(0.95)' : 'none',
+                            transition: 'opacity 0.2s, transform 0.2s',
                           }}
                           onClick={() => navigate(`/student/${student?.id}`)}
-                          title={`${student?.name} — click to open profile`}
+                          title={`${student?.name} — drag to move, click to open profile`}
                         >
                           <strong style={{ display: 'block', lineHeight: 1.3 }}>
                             {lesson.lesson_time}
@@ -277,12 +319,13 @@ export default function WeeklyCalendar() {
                           </div>
                           {/* Edit pencil */}
                           <div
+                            className="btn-icon"
                             style={{
                               position: 'absolute', bottom: '2px', right: '2px',
                               backgroundColor: 'var(--accent-green)', color: '#fff',
-                              borderRadius: '3px', width: '16px', height: '16px',
+                              borderRadius: '3px', width: '18px', height: '18px',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '0.6rem', opacity: 0.85,
+                              fontSize: '0.65rem', opacity: 0.85, padding: 0
                             }}
                             onClick={e => {
                               e.stopPropagation();
@@ -326,6 +369,33 @@ export default function WeeklyCalendar() {
           studentId={editingLesson.student_id}
           initialData={editingLesson}
         />
+      )}
+
+      {/* Move Confirmation Overlay */}
+      {confirmMove && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="card animate-slide-up" style={{ maxWidth: '340px', textAlign: 'center' }}>
+            <h3 className="mb-2">Move recurring lesson?</h3>
+            <p className="text-muted mb-6" style={{ fontSize: '0.9rem' }}>
+              Would you like to move only this lesson or the entire loop for {students.find(s => s.id === confirmMove.lesson.student_id)?.name}?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button className="btn btn-primary" onClick={() => executeMove(true)}>
+                All lessons in loop
+              </button>
+              <button className="btn btn-ghost" onClick={() => executeMove(false)}>
+                Only this instance
+              </button>
+              <button className="btn btn-ghost" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }} onClick={() => setConfirmMove(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

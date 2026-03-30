@@ -98,12 +98,26 @@ export const useStore = create<AppState>()(
         if (!lessonToEdit) return state;
 
         if (updateSeries && lessonToEdit.recurringId) {
+          let dateDelta = 0;
+          if (updates.lesson_date) {
+            const oldD = new Date(lessonToEdit.lesson_date).getTime();
+            const newD = new Date(updates.lesson_date).getTime();
+            dateDelta = Math.round((newD - oldD) / (1000 * 60 * 60 * 24));
+          }
+
           return {
-            lessons: state.lessons.map((lesson) => 
-              lesson.recurringId === lessonToEdit.recurringId 
-                ? { ...lesson, ...updates, updated_at: new Date().toISOString() } 
-                : lesson
-            )
+            lessons: state.lessons.map((lesson) => {
+              if (lesson.recurringId !== lessonToEdit.recurringId) return lesson;
+              
+              const newUpdates = { ...updates };
+              if (dateDelta !== 0) {
+                const currentD = new Date(lesson.lesson_date);
+                currentD.setDate(currentD.getDate() + dateDelta);
+                newUpdates.lesson_date = currentD.toISOString().split('T')[0];
+              }
+              
+              return { ...lesson, ...newUpdates, updated_at: new Date().toISOString() };
+            })
           };
         }
 
