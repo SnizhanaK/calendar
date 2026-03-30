@@ -10,16 +10,13 @@ export default function Home() {
   const navigate = useNavigate();
   const { students, lessons, editLesson } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'Active' | 'Inactive'>('Active');
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
-  const filteredStudents = students.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = s.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredStudents = students.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const today = new Date().toISOString().split('T')[0];
   const todayLessons = lessons
@@ -36,15 +33,15 @@ export default function Home() {
       {/* Sidebar: Lessons & Students */}
       <div className="dashboard-sidebar">
         {/* Today's Lessons Section */}
-        <section className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
+        <section className="mb-12">
+          <div className="flex items-center gap-2 mb-6">
             <Clock size={18} className="text-secondary" />
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Today's Lessons</h3>
           </div>
           
           <div className="flex flex-col gap-2">
             {todayLessons.length === 0 ? (
-              <div className="p-4 text-center border-dashed" style={{ border: '1px dashed var(--border-color)', borderRadius: '8px' }}>
+              <div className="text-center border-dashed" style={{ padding: '2.5rem 1rem', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
                 <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>No lessons today.</p>
               </div>
             ) : (
@@ -90,29 +87,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Students List Section */}
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Users size={18} className="text-muted" />
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Students</h3>
-            </div>
-            <div className="flex bg-card p-0.5 rounded" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
-              <button 
-                className={`px-2 py-0.5 text-[0.7rem] rounded ${filterStatus === 'Active' ? 'bg-accent text-white' : 'text-muted'}`}
-                style={{ backgroundColor: filterStatus === 'Active' ? 'var(--accent-green)' : 'transparent' }}
-                onClick={() => setFilterStatus('Active')}
-              >
-                Active
-              </button>
-              <button 
-                className={`px-2 py-0.5 text-[0.7rem] rounded ${filterStatus === 'Inactive' ? 'bg-accent text-white' : 'text-muted'}`}
-                style={{ backgroundColor: filterStatus === 'Inactive' ? 'var(--accent-green)' : 'transparent' }}
-                onClick={() => setFilterStatus('Inactive')}
-              >
-                Inactive
-              </button>
-            </div>
+          <div className="flex items-center gap-2 mb-4">
+            <Users size={18} className="text-muted" />
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Students</h3>
           </div>
 
           <div style={{ position: 'relative', marginBottom: '1rem' }}>
