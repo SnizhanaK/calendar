@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Trash2, ChevronDown, ChevronRight, Clipboard } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, ChevronDown, ChevronRight, Clipboard, CalendarClock } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { Lesson } from '../types';
 import LessonFormModal from '../components/LessonFormModal';
@@ -123,10 +123,16 @@ export default function StudentProfile() {
 
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
-  const pastLessons = studentLessons.filter(l => {
-    const d = l.lesson_date.length > 10 ? l.lesson_date.split('T')[0] : l.lesson_date;
-    return d <= todayStr;
-  });
+
+  const normDate = (l: Lesson) => l.lesson_date.length > 10 ? l.lesson_date.split('T')[0] : l.lesson_date;
+
+  const pastLessons = studentLessons
+    .filter(l => normDate(l) <= todayStr);
+
+  const upcomingLessons = studentLessons
+    .filter(l => normDate(l) > todayStr)
+    .sort((a, b) => normDate(a).localeCompare(normDate(b)));
+
   const latestLesson = pastLessons[0];
 
   const handleSaveLesson = (lessonData: Omit<Lesson, 'id' | 'created_at' | 'updated_at'>) => {
@@ -266,6 +272,43 @@ export default function StudentProfile() {
           )}
         </div>
       </div>
+
+      {/* Upcoming Lessons */}
+      {upcomingLessons.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock size={18} style={{ color: 'var(--accent-green)' }} />
+            <h2 style={{ margin: 0 }}>Upcoming Lessons</h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {upcomingLessons.map(lesson => (
+              <div
+                key={lesson.id}
+                className="card"
+                style={{ padding: '0.875rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--accent-green)' }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600 }}>
+                    {new Date(normDate(lesson)).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {lesson.lesson_time && <span className="text-muted" style={{ fontWeight: 400, marginLeft: '8px' }}>• {lesson.lesson_time}</span>}
+                  </div>
+                  {lesson.lesson_notes && (
+                    <div className="text-muted" style={{ fontSize: '0.85rem', marginTop: '2px' }}>{lesson.lesson_notes.substring(0, 60)}{lesson.lesson_notes.length > 60 ? '...' : ''}</div>
+                  )}
+                </div>
+                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                  <button className="btn-icon" style={{ opacity: 0.6 }} onClick={() => openEditModal(lesson)} title="Edit">
+                    <Edit2 size={15} />
+                  </button>
+                  <button className="btn-icon" style={{ color: '#c2410c', opacity: 0.8 }} onClick={() => handleDelete(lesson.id)} title="Delete">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Lesson History Header */}
       <div className="flex justify-between items-center mb-4 mt-6">
